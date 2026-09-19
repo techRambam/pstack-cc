@@ -306,9 +306,28 @@ def cmd_doctor(a):
             print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:70]}")
 
     print("\ngemini     (Google, API key from ~/.claude/.env)")
-    for m in GEMINI_MODELS if a.all else GEMINI_MODELS[:2] + GEMINI_MODELS[-1:]:
-        text, err = run_gemini(m, probe, None, a.timeout, env)
-        print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:70]}")
+    gem_keyed = bool(env.get("GEMINI_API_KEY") or env.get("GOOGLE_API_KEY"))
+    gem_good = gem_unfunded = 0
+    if not gem_keyed:
+        print("  NO KEY     set GEMINI_API_KEY in ~/.claude/.env")
+    else:
+        for m in GEMINI_MODELS if a.all else GEMINI_MODELS[:2] + GEMINI_MODELS[-1:]:
+            text, err = run_gemini(m, probe, None, a.timeout, env)
+            e = err or ""
+            if not text and ("HTTP 402" in e or "payment" in e.lower()):
+                gem_unfunded += 1
+                print(f"  UNFUNDED   {m}  account has no balance (key is valid)")
+                continue
+            if text:
+                gem_good += 1
+            print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:70]}")
+        # Gemini is dispatched by its own function, not through OAI_VENDORS, so it
+        # was never added to _DOCTOR_FAILED -- doctor exited 0 with every Gemini
+        # model dead, which is the exact model-rotation case it exists to catch.
+        if gem_good == 0 and gem_unfunded == 0:
+            _DOCTOR_FAILED.append("gemini")
+        elif gem_good == 0:
+            print("  -> gemini is keyed but unfunded; not counted as a failure")
 
     for name in sorted(OAI_VENDORS):
         spec = OAI_VENDORS[name]
