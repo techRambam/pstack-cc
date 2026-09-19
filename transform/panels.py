@@ -65,15 +65,22 @@ reporting three as if four voted is not.
 """
 
 targets = ["arena", "interrogate", "swarm", "architect"]
-done = []
+done, missing = [], []
 for name in targets:
     p = ROOT / "skills" / name / "SKILL.md"
     if not p.exists():
-        print(f"    panels: MISSING skills/{name}/SKILL.md", file=sys.stderr)
+        # A warn-and-continue here meant an upstream RENAME silently dropped the
+        # cross-vendor section from a panel skill, leaving it telling the agent to
+        # use Anthropic-only seats. Fail instead.
+        missing.append(name)
         continue
     t = p.read_text(encoding="utf-8")
     if MARK in t:
         t = t[: t.index(MARK)].rstrip() + "\n"
     p.write_text(t.rstrip() + "\n" + SECTION, encoding="utf-8")
     done.append(name)
+if missing:
+    print(f"    panels: MISSING upstream skill(s): {', '.join(missing)} -- renamed or removed "
+          f"upstream. Retarget transform/panels.py before shipping.", file=sys.stderr)
+    sys.exit(1)
 print(f"    panels: cross-vendor section added to {', '.join(done)}")

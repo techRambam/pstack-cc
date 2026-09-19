@@ -281,7 +281,17 @@ def cmd_run(a):
 
 
 def cmd_doctor(a):
+    """Probe every vendor. Exits non-zero if any KEYED vendor has no working model.
+
+    Vendor model ids rot: gemini-2.5-pro already answers "no longer available to new
+    users" (measured). A panel seat that quietly stops resolving degrades a review
+    without announcing it, so doctor is usable as a check (`panelist doctor || ...`),
+    not just as a report. A vendor with NO KEY is skipped, not failed -- not having a
+    key is a choice, not a regression.
+    """
     env = load_env()
+    global _DOCTOR_FAILED
+    _DOCTOR_FAILED = []
     probe = "Reply in under 8 words: which model family are you?"
     print("anthropic  (native Agent tool, no adapter needed)")
     for m in ("opus", "sonnet", "haiku", "fable"):
@@ -306,9 +316,28 @@ def cmd_doctor(a):
         if not env.get(spec["env"]):
             print(f"  NO KEY     set {spec['env']} in ~/.claude/.env")
             continue
-        for m in (spec["probe"] if a.all else spec["probe"][:2]):
+        tried = spec["probe"] if a.all else spec["probe"][:2]
+        good = unfunded = 0
+        for m in tried:
             text, err = run_oai(name, m, probe, None, a.timeout, env)
+            e = (err or "")
+            # An unfunded account is a BILLING CHOICE, not model rot. Cerebras and
+            # DeepSeek both answer 402 here: the key is valid, the ids resolve, there
+            # is simply no balance. Failing the check on that would make `doctor` a
+            # permanent red light and train you to ignore it -- which is exactly how
+            # a genuine retirement would then slip past.
+            if not text and ("HTTP 402" in e or "payment" in e.lower()
+                             or "insufficient balance" in e.lower()):
+                unfunded += 1
+                print(f"  UNFUNDED   {m}  account has no balance (key is valid)")
+                continue
+            if text:
+                good += 1
             print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:60]}")
+        if good == 0 and unfunded == 0:
+            _DOCTOR_FAILED.append(name)
+        elif good == 0:
+            print(f"  -> {name} is keyed but unfunded; not counted as a failure")
 
 
 p = argparse.ArgumentParser(prog="panelist", description=__doc__,
@@ -324,10 +353,22 @@ r.add_argument("-C", "--cwd", help="working root (codex only)")
 r.add_argument("-t", "--timeout", type=int, default=600)
 r.set_defaults(func=cmd_run)
 
-d = sub.add_parser("doctor", help="probe every vendor")
+def _doctor_exit():
+    if _DOCTOR_FAILED:
+        print(f"\nNo model answered for: {', '.join(sorted(_DOCTOR_FAILED))}. "
+              f"Either the key is dead or every id in that vendor's probe list has been "
+              f"retired -- check the vendor's /models endpoint and update OAI_VENDORS.",
+              file=sys.stderr)
+        sys.exit(1)
+
+
+_DOCTOR_FAILED = []
+d = sub.add_parser("doctor", help="probe every vendor; non-zero if a keyed vendor is dead")
 d.add_argument("--all", action="store_true", help="probe every model, not a sample")
 d.add_argument("-t", "--timeout", type=int, default=180)
 d.set_defaults(func=cmd_doctor)
 
 a = p.parse_args()
 a.func(a)
+if a.cmd == "doctor":
+    _doctor_exit()
