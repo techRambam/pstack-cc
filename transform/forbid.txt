@@ -1,0 +1,14 @@
+\.cursor/
+cursor-agent
+CURSOR_[A-Z_]+
+cursor-team-kit
+pstack-models\.mdc
+api2\.cursor\.sh
+grok-4\.6
+gpt-5\.6-[a-z]+-max
+gpt-6-astra-[a-z]+
+claude-opus-5-thinking
+claude-fable-5-1-thinking
+generalPurpose
+--squash
+is_background

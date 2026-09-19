@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""panelist -- run one prompt on one NON-Anthropic model and return its answer.
+
+Why this exists
+---------------
+pstack's `arena`, `interrogate`, `swarm` and `architect` get their adversarial
+signal from MODEL DIVERSITY, not from assigned personas (interrogate/SKILL.md).
+Upstream drew panels from four vendors. Claude Code's own `Agent` tool reaches
+only Anthropic models, so without this adapter those four skills collapse into
+"N subagents, same family" and lose the property they were built on.
+
+Division of labour: Anthropic panelists stay on the `Agent` tool (model: opus /
+sonnet / haiku / fable) -- do NOT route them through here. This covers the
+other vendors only.
+
+Usage
+  panelist doctor                        probe every vendor, list what answers
+  panelist run -m <model> -p <file|->  [--schema f] [--out f] [-C dir] [-t secs]
+
+Credentials are read from ~/.claude/.env and are never printed.
+"""
+import argparse, json, os, pathlib, re, subprocess, sys, tempfile, urllib.request, urllib.error
+
+ENV_FILE = pathlib.Path(os.environ.get("CLAUDE_CONFIG_DIR", pathlib.Path.home() / ".claude")) / ".env"
+
+# Probe order is "strongest first" per vendor; doctor reports which answer.
+CODEX_MODELS  = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.5"]
+GEMINI_MODELS = ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-2.5-flash",
+                 "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"]
+# Every non-Anthropic vendor below is OpenAI-chat-compatible, so they share one
+# handler. Models are addressed as `vendor:model` (e.g. groq:qwen/qwen3.8-27b)
+# because ids collide across vendors -- `qwen/qwen3.8-27b` exists on both Groq
+# and OpenRouter, and a bare id would silently pick whichever matched first.
+OAI_VENDORS = {
+    "openrouter": {"base": "https://openrouter.ai/api/v1", "env": "OPENROUTER_API_KEY",
+                   "probe": ["deepseek/deepseek-v4-flash-0731:free", "google/gemma-4-31b-it:free",
+                             "nvidia/nemotron-3-super-120b-a12b:free", "z-ai/glm-5.2:free"]},
+    "groq":       {"base": "https://api.groq.com/openai/v1", "env": "GROQ_API_KEY",
+                   "probe": ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "groq/compound"]},
+    "cerebras":   {"base": "https://api.cerebras.ai/v1", "env": "CEREBRAS_API_KEY",
+                   "probe": ["qwen-3.8-27b", "gpt-oss-120b"]},
+    "mistral":    {"base": "https://api.mistral.ai/v1", "env": "MISTRAL_API_KEY",
+                   "probe": ["ministral-8b-latest", "open-mistral-nemo", "ministral-3b-latest"]},
+    "deepseek":   {"base": "https://api.deepseek.com", "env": "DEEPSEEK_API_KEY",
+                   "probe": ["deepseek-v4-pro", "deepseek-flash"]},
+    "huggingface":{"base": "https://router.huggingface.co/v1", "env": "HUGGINGFACE_API_KEY",
+                   "probe": ["meta-llama/Llama-3.3-70B-Instruct", "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                             "CohereLabs/command-a-reasoning-08-2025", "deepseek-ai/DeepSeek-V3.2"]},
+}
+ANTHROPIC = {"opus", "sonnet", "haiku", "fable", "inherit"}
+UA = "pstack-cc-panelist/1.0 (+https://github.com/cursor/plugins)"
+
+
+def load_env():
+    env = {}
+    try:
+        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$", line)
+            if m:
+                env[m.group(1)] = m.group(2).strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return env
+
+
+def vendor_of(model):
+    """-> (vendor, model_id). Explicit `vendor:model` wins over any heuristic."""
+    head = model.split(":", 1)[0]
+    if head in OAI_VENDORS:
+        return head, model.split(":", 1)[1]
+    if model in ANTHROPIC:
+        return "anthropic", model
+    if model.startswith("gpt-") or model.startswith("o3") or model.startswith("codex"):
+        return "codex", model
+    if model.startswith("gemini-"):
+        return "gemini", model
+    return None, model
+
+
+# --- OpenAI, via the codex CLI (org ChatGPT auth; no API key needed) --------
+def run_codex(model, prompt, schema_path, cwd, timeout):
+    cmd = ["codex", "exec", "--skip-git-repo-check", "--ephemeral",
+           "-s", "read-only", "--color", "never", "-m", model]
+    with tempfile.TemporaryDirectory() as td:
+        out_file = pathlib.Path(td) / "last.txt"
+        cmd += ["-o", str(out_file)]
+        if schema_path:
+            conv = pathlib.Path(td) / "schema.openai.json"
+            conv.write_text(json.dumps(openai_schema(
+                json.loads(pathlib.Path(schema_path).read_text()))), encoding="utf-8")
+            cmd += ["--output-schema", str(conv)]
+        if cwd:
+            cmd += ["-C", str(cwd)]
+        cmd.append(prompt)
+        # GOTCHA, measured: `codex exec` appends piped stdin as a <stdin> block
+        # when a prompt is also given. Under an agent harness stdin never
+        # closes, so it hangs forever. stdin MUST be /dev/null.
+        try:
+            p = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True,
+                               text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return None, f"codex timed out after {timeout}s"
+        if out_file.exists() and out_file.read_text().strip():
+            return out_file.read_text().strip(), None
+        # codex can exit 0 after the API rejected the request (measured: an
+        # invalid_json_schema 400 still returned status 0), leaving -o empty.
+        # Never fall back to stdout there -- stdout is the whole transcript and
+        # would be silently mistaken for the model's answer.
+        blob = ((p.stderr or "") + (p.stdout or "")).strip()
+        if p.returncode != 0 or schema_path:
+            return None, blob[-600:] or f"codex produced no answer (exit {p.returncode})"
+        return blob, None
+
+
+
+# Gemini's responseSchema is an OpenAPI 3.0 subset, not full JSON Schema: it
+# rejects `additionalProperties` and friends with HTTP 400 (measured). One
+# schema file therefore has to be down-converted per vendor rather than passed
+# through, so a panel can share a single schema across models.
+GEMINI_SCHEMA_KEYS = {"type", "format", "description", "nullable", "enum",
+                      "maxItems", "minItems", "properties", "required", "items",
+                      "propertyOrdering"}
+
+
+def gemini_schema(node):
+    """Down-convert a JSON Schema to Gemini's OpenAPI-3.0 subset.
+
+    `properties` is keyed by arbitrary PROPERTY NAMES, not schema keywords, so
+    it must be walked as a name->schema map. Filtering it like a normal schema
+    node silently deletes every property and the API then rejects `required`
+    with "property is not defined" (measured).
+    """
+    if isinstance(node, list):
+        return [gemini_schema(x) for x in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for k, v in node.items():
+        if k not in GEMINI_SCHEMA_KEYS:
+            continue
+        if k == "properties" and isinstance(v, dict):
+            out[k] = {name: gemini_schema(sub) for name, sub in v.items()}
+        elif isinstance(v, (dict, list)):
+            out[k] = gemini_schema(v)
+        else:
+            out[k] = v
+    return out
+
+
+# OpenAI's strict structured-output mode is the MIRROR IMAGE of Gemini's: it
+# demands `additionalProperties: false` and requires EVERY key in `properties`
+# to appear in `required` ("Missing 'tags'", HTTP 400, measured). Gemini
+# rejects `additionalProperties` entirely. One schema file cannot satisfy both,
+# so each vendor gets its own conversion and callers write plain JSON Schema.
+def openai_schema(node):
+    if isinstance(node, list):
+        return [openai_schema(x) for x in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for k, v in node.items():
+        if k == "$schema":
+            continue
+        if k == "properties" and isinstance(v, dict):
+            out[k] = {name: openai_schema(sub) for name, sub in v.items()}
+        elif isinstance(v, (dict, list)):
+            out[k] = openai_schema(v)
+        else:
+            out[k] = v
+    if isinstance(out.get("properties"), dict):
+        out["required"] = list(out["properties"].keys())
+        out["additionalProperties"] = False
+    return out
+
+
+# --- Google, via the Gemini REST API ---------------------------------------
+def run_gemini(model, prompt, schema_path, timeout, env):
+    key = env.get("GEMINI_API_KEY") or env.get("GOOGLE_API_KEY")
+    if not key:
+        return None, "no GEMINI_API_KEY in ~/.claude/.env"
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    if schema_path:
+        body["generationConfig"] = {
+            "responseMimeType": "application/json",
+            "responseSchema": gemini_schema(json.loads(pathlib.Path(schema_path).read_text())),
+        }
+    # NOTE: brace the model in any shell caller -- zsh parses `$m:generateContent`
+    # as a parameter modifier and silently mangles the URL (measured).
+    req = urllib.request.Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        data=json.dumps(body).encode(),
+        headers={"x-goog-api-key": key, "Content-Type": "application/json",
+                 "User-Agent": UA},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            d = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            msg = json.loads(e.read()).get("error", {}).get("message", "")
+        except Exception:
+            msg = ""
+        return None, f"HTTP {e.code} {msg[:300]}"
+    except Exception as e:
+        return None, str(e)[:300]
+    try:
+        return d["candidates"][0]["content"]["parts"][0]["text"].strip(), None
+    except (KeyError, IndexError):
+        return None, f"unexpected response shape: {json.dumps(d)[:200]}"
+
+
+# --- any OpenAI-chat-compatible vendor -------------------------------------
+def run_oai(vendor, model, prompt, schema_path, timeout, env):
+    spec = OAI_VENDORS[vendor]
+    key = env.get(spec["env"])
+    if not key:
+        return None, (f"no {spec['env']} in ~/.claude/.env -- add the line yourself; "
+                      f"never paste a key into a chat")
+    body = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    if schema_path:
+        # Same strict dialect as OpenAI. Support varies per vendor and per
+        # model; run_oai reports the rejection rather than silently returning
+        # prose that a caller would parse as JSON.
+        body["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": "panelist", "strict": True,
+                            "schema": openai_schema(
+                                json.loads(pathlib.Path(schema_path).read_text()))},
+        }
+    # Several of these sit behind Cloudflare, which 403s urllib's default
+    # "Python-urllib/3.9" User-Agent while letting curl through with the SAME
+    # key (measured: Groq returned 200 to curl and 403 to urllib). Always send
+    # a real UA.
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+               "User-Agent": UA}
+    if vendor == "openrouter":
+        headers["X-Title"] = "pstack-cc panelist"
+    req = urllib.request.Request(spec["base"] + "/chat/completions",
+                                 data=json.dumps(body).encode(), headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            d = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            raw = json.loads(e.read())
+            msg = raw.get("error", {})
+            msg = msg.get("message", "") if isinstance(msg, dict) else str(msg)
+        except Exception:
+            msg = ""
+        return None, f"HTTP {e.code} {msg[:300]}"
+    except Exception as e:
+        return None, str(e)[:300]
+    try:
+        return (d["choices"][0]["message"]["content"] or "").strip(), None
+    except (KeyError, IndexError):
+        return None, f"unexpected response shape: {json.dumps(d)[:200]}"
+
+
+def cmd_run(a):
+    env = load_env()
+    prompt = sys.stdin.read() if a.prompt == "-" else pathlib.Path(a.prompt).read_text(encoding="utf-8")
+    v, mid = vendor_of(a.model)
+    if v == "anthropic":
+        sys.exit(f"'{a.model}' is an Anthropic model -- spawn it with the Agent tool's "
+                 f"`model:` field, not through panelist.")
+    if v == "codex":
+        text, err = run_codex(mid, prompt, a.schema, a.cwd, a.timeout)
+    elif v == "gemini":
+        text, err = run_gemini(mid, prompt, a.schema, a.timeout, env)
+    elif v in OAI_VENDORS:
+        text, err = run_oai(v, mid, prompt, a.schema, a.timeout, env)
+    else:
+        sys.exit(f"unknown model '{a.model}'. Use vendor:model "
+                 f"({', '.join(sorted(OAI_VENDORS))}) or run: panelist doctor")
+    if err:
+        print(f"panelist: {a.model}: {err}", file=sys.stderr)
+        sys.exit(1)
+    if a.out:
+        pathlib.Path(a.out).write_text(text + "\n", encoding="utf-8")
+    print(text)
+
+
+def cmd_doctor(a):
+    env = load_env()
+    probe = "Reply in under 8 words: which model family are you?"
+    print("anthropic  (native Agent tool, no adapter needed)")
+    for m in ("opus", "sonnet", "haiku", "fable"):
+        print(f"  available  {m}")
+
+    print("\ncodex      (OpenAI, org ChatGPT auth via the codex CLI)")
+    if not subprocess.run(["which", "codex"], capture_output=True).returncode == 0:
+        print("  MISSING    codex CLI not on PATH")
+    else:
+        for m in CODEX_MODELS if a.all else CODEX_MODELS[:2]:
+            text, err = run_codex(m, probe, None, None, a.timeout)
+            print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:70]}")
+
+    print("\ngemini     (Google, API key from ~/.claude/.env)")
+    for m in GEMINI_MODELS if a.all else GEMINI_MODELS[:2] + GEMINI_MODELS[-1:]:
+        text, err = run_gemini(m, probe, None, a.timeout, env)
+        print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:70]}")
+
+    for name in sorted(OAI_VENDORS):
+        spec = OAI_VENDORS[name]
+        print(f"\n{name}")
+        if not env.get(spec["env"]):
+            print(f"  NO KEY     set {spec['env']} in ~/.claude/.env")
+            continue
+        for m in (spec["probe"] if a.all else spec["probe"][:2]):
+            text, err = run_oai(name, m, probe, None, a.timeout, env)
+            print(f"  {'ok        ' if text else 'FAIL      '} {m}  {(text or err or '')[:60]}")
+
+
+p = argparse.ArgumentParser(prog="panelist", description=__doc__,
+                            formatter_class=argparse.RawDescriptionHelpFormatter)
+sub = p.add_subparsers(dest="cmd", required=True)
+
+r = sub.add_parser("run", help="run a prompt on one model")
+r.add_argument("-m", "--model", required=True)
+r.add_argument("-p", "--prompt", required=True, help="prompt file, or - for stdin")
+r.add_argument("--schema", help="JSON Schema file for a structured answer")
+r.add_argument("--out", help="also write the answer here")
+r.add_argument("-C", "--cwd", help="working root (codex only)")
+r.add_argument("-t", "--timeout", type=int, default=600)
+r.set_defaults(func=cmd_run)
+
+d = sub.add_parser("doctor", help="probe every vendor")
+d.add_argument("--all", action="store_true", help="probe every model, not a sample")
+d.add_argument("-t", "--timeout", type=int, default=180)
+d.set_defaults(func=cmd_doctor)
+
+a = p.parse_args()
+a.func(a)

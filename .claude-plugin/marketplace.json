@@ -1,0 +1,16 @@
+{
+  "name": "pstack-cc",
+  "owner": {
+    "name": "techRambam"
+  },
+  "description": "pstack, adapted for Claude Code. Generated from upstream by import.sh, not hand-forked.",
+  "plugins": [
+    {
+      "name": "pstack-cc",
+      "source": "./",
+      "description": "pstack's skills, playbooks and principles with Cursor-only mechanisms ported to Claude Code.",
+      "category": "engineering",
+      "keywords": ["pstack", "poteto-mode", "workflow", "principles", "verification"]
+    }
+  ]
+}
