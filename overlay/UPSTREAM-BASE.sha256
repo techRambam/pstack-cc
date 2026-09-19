@@ -1,0 +1,6 @@
+# sha256 of the UPSTREAM file each overlay/ file replaces, at the ref it was
+# based on. Regenerate deliberately with: ./import.sh --accept-overlay
+# A mismatch means upstream rewrote a file you override -- read their version
+# before re-accepting, or the override silently discards their change.
+3624c8ef16cf2e48deb2a4049e72c6962a9431c8d6c6af90e7bd7ea0375224ec  skills/make-bot-ui/SKILL.md
+2399a5670c6408e92a996299c9de9f22736997cb7e835c694309e7c6fc8c39bf  skills/setup-pstack/SKILL.md

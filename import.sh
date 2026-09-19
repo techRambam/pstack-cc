@@ -13,6 +13,9 @@ UPSTREAM_REPO="https://github.com/cursor/plugins.git"
 UPSTREAM_REF="032be146865d973682535de75f2287da438550bf"
 SRC="$ROOT/upstream/pstack"
 
+ACCEPT=""
+for a in "$@"; do [ "$a" = "--accept-overlay" ] && ACCEPT="--accept-overlay"; done
+
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31mFAIL:\033[0m %s\n' "$*" >&2; exit 1; }
 
@@ -45,9 +48,12 @@ cp "$SRC/README.md" "$ROOT/reference/upstream-README.md"
 
 # --- 3. deterministic substitutions ------------------------------------
 log "applying transform/rules.pl"
+COUNTS="$(mktemp)"; RULES_C="$(mktemp)"
+trap 'rm -f "$COUNTS" "$RULES_C"' EXIT
+python3 "$ROOT/transform/build-counting-rules.py" "$ROOT/transform/rules.pl" "$RULES_C" "$COUNTS"
 find "$ROOT/skills" "$ROOT/agents" -type f \
   \( -name '*.md' -o -name '*.ts' -o -name '*.mjs' -o -name '*.sh' -o -name '*.json' \) \
-  -print0 | xargs -0 perl -pi "$ROOT/transform/rules.pl"
+  -print0 | xargs -0 perl -pi "$RULES_C"
 
 # --- 4. frontmatter normalisation --------------------------------------
 log "normalising frontmatter"
@@ -66,6 +72,9 @@ if [ -d "$ROOT/overlay" ] && [ -n "$(find "$ROOT/overlay" -type f -print -quit)"
       printf '    overlay: %s\n' "${f#./}"
     done
 fi
+
+log "auditing rule coverage + overlay drift"
+python3 "$ROOT/transform/audit.py" "$COUNTS" $ACCEPT || die "audit failed (see above)"
 
 # --- 6. forbid check: nothing Cursor-only may survive -------------------
 log "checking for surviving Cursor dependencies"

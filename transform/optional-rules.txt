@@ -1,0 +1,23 @@
+# Rules that legitimately fire ZERO times against the current upstream ref.
+# audit.py fails the build on any other dead rule, so each line here is a claim
+# a human checked. Verified 2026-09-19 against 032be14 by grepping upstream.
+#
+# Re-check these when bumping UPSTREAM_REF: a rule listed here is silenced, so if
+# upstream starts using the phrasing it targets you will not be told.
+
+3    # .cursor/settings.json -- 0 in skills|agents (8 hits, all in automations/benny/,
+     # which is copied to reference/ untransformed as historical record). Defensive.
+4    # .cursor/automations/ -- same: 0 in scope, 26 hits only under benny.
+7    # `Task` tool (backticked) -- 0 anywhere upstream. Defensive variant.
+9    # "Task calls" -- 0 anywhere upstream. Defensive variant.
+10   # "the Task" -- 3 upstream hits, but rule 8 (`\bTask tool\b`) consumes them first;
+     # verified interrogate:36 emits "the Agent tool". Superseded, kept as a net.
+16   # grok-4.6-fast (bare) -- 28 upstream hits, all inside grok-4.6-fast-xhigh, which
+     # rule 15 replaces wholesale first. Superseded.
+23   # `/create-skill` (backticked slash form) -- 0 anywhere upstream. Defensive.
+29   # "in Cursor" -- 0 in skills|agents. Defensive.
+37   # `control-ui` or `control-cli` from `cursor-team-kit` -- superseded by the precise
+     # composite rules 41-42 added later, which match the real upstream phrasing.
+43   # `cursor-team-kit` (bare) -- 10 upstream hits, all consumed by rules 38-42 first.
+46   # --interval string-default form -- upstream uses the positiveNumber form that
+     # rule 47 matches. Kept in case upstream switches back.
