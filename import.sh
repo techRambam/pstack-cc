@@ -65,7 +65,12 @@ python3 "$ROOT/transform/panels.py"
 # --- 5. overlay (hand-written replacements win) -------------------------
 if [ -d "$ROOT/overlay" ] && [ -n "$(find "$ROOT/overlay" -type f -print -quit)" ]; then
   log "applying overlay/"
-  (cd "$ROOT/overlay" && find . -type f -print0) | \
+  # -not -name UPSTREAM-BASE.sha256: that manifest lives under overlay/ but is
+  # METADATA, not an override. Copying it would drop an untracked
+  # UPSTREAM-BASE.sha256 at the repo root on every import while still reporting
+  # "clean" -- measured: exactly that file turned up at the root and was first
+  # mistaken for a stray.
+  (cd "$ROOT/overlay" && find . -type f -not -name UPSTREAM-BASE.sha256 -print0) | \
     while IFS= read -r -d '' f; do
       mkdir -p "$ROOT/$(dirname "${f#./}")"
       cp "$ROOT/overlay/${f#./}" "$ROOT/${f#./}"

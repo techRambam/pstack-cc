@@ -67,6 +67,22 @@ for f in sorted((ROOT/"overlay").rglob("*")):
         continue
     current[rel] = hashlib.sha256(up.read_bytes()).hexdigest()
 
+# A missing upstream target is fatal in BOTH modes. Overlays are copied BEFORE the
+# audit runs, so if upstream deleted a skill an overlay replaces, accepting would
+# rewrite the baseline without that path and ship the deleted skill back as if it
+# were still upstream's. Accepting is for "upstream changed this file", never for
+# "upstream no longer has this file".
+if missing:
+    for rel in missing:
+        problems.append(f"OVERLAY {rel} replaces a file that no longer exists upstream -- "
+                        f"delete overlay/{rel} or retarget it. --accept-overlay will NOT "
+                        f"silence this: the overlay is copied before this audit, so the "
+                        f"deleted upstream file would be restored and shipped.")
+    print()
+    for pr in problems:
+        print(f"  !! {pr}")
+    sys.exit(1)
+
 if accept:
     lines = ["# sha256 of the UPSTREAM file each overlay/ file replaces, at the ref it was",
              "# based on. Regenerate deliberately with: ./import.sh --accept-overlay",
@@ -85,8 +101,6 @@ else:
                 f"      was {recorded[rel][:16]}  now {h[:16]}\n"
                 f"      Read upstream/pstack/{rel}, fold anything new into overlay/{rel},\n"
                 f"      then re-accept: ./import.sh --accept-overlay")
-    for rel in missing:
-        problems.append(f"OVERLAY {rel} replaces a file that no longer exists upstream -- delete it or retarget it")
     print(f"    overlay: {len(current)} file(s) checked against upstream")
 
 if problems:
