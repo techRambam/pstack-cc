@@ -35,8 +35,14 @@ eq "and the playbook instruction"      "$(turn 'refactor the parser' | grep -c '
 eq "/poteto-off still unpins"          "$(turn '/poteto-off' >/dev/null; armed)" "no"
 eq "and the next turn is quiet"        "$(turn 'hello')" ""
 
-start; start resume; start clear
-eq "re-arm is idempotent"              "$(find "$CFG/state" -name '*.mode' | wc -l | tr -d ' ')" "1"
+eq "compact does not re-arm after off" "$(start compact; armed)" "no"
+eq "resume does not re-arm after off"  "$(start resume; armed)" "no"
+eq "clear does not re-arm after off"   "$(start clear; armed)" "no"
+eq "fork does not re-arm after off"    "$(start fork; armed)" "no"
+eq "the turn after those stays quiet"  "$(turn 'still off')" ""
+
+start; start
+eq "repeat startup is idempotent"      "$(find "$CFG/state" -name '*.mode' | wc -l | tr -d ' ')" "1"
 
 : > "$CFG/state/stale.mode"
 touch -t "$(python3 -c 'import datetime;print((datetime.datetime.now()-datetime.timedelta(days=8)).strftime("%Y%m%d%H%M"))')" "$CFG/state/stale.mode"

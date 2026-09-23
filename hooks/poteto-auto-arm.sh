@@ -17,8 +17,11 @@
 #   rm ~/.claude/pstack-cc/always-on      stop arming them
 #   /poteto-off                           unpin the current session only
 #
-# SessionStart does not run again mid-session, so /poteto-off still wins until
-# the next session starts.
+# ONLY source=startup arms. SessionStart also fires on resume, clear, compact
+# and fork, all of which happen inside a session that already has its marker,
+# so re-arming there buys nothing and would resurrect a deliberate /poteto-off
+# at the next compaction. A forked session starts unpinned as a result; type
+# /poteto-mode in it.
 #
 # It also reaps .mode markers older than 7 days. One is written per session and
 # nothing else deletes them.
@@ -29,10 +32,21 @@ set -uo pipefail
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/pstack-cc"
 [ -f "$CFG/always-on" ] || exit 0
 
-payload="$(cat 2>/dev/null)" || true
-sid="$(printf '%s' "$payload" \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("session_id",""))' 2>/dev/null)"
-[ -n "$sid" ] || sid="${CLAUDE_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"
+read -r -d '' PY <<'PYEOF' || true
+import json,sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get("session_id", ""))
+    print(d.get("source", ""))
+except Exception:
+    pass
+PYEOF
+
+parsed="$(cat 2>/dev/null | python3 -c "$PY" 2>/dev/null)" || exit 0
+sid="$(printf '%s\n' "$parsed" | sed -n '1p')"
+src="$(printf '%s\n' "$parsed" | sed -n '2p')"
+
+[ "$src" = startup ] || exit 0
 [ -n "$sid" ] || exit 0
 case "$sid" in */*|..|.) exit 0 ;; esac
 

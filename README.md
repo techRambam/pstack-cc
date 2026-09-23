@@ -85,8 +85,10 @@ Typing `/poteto-mode` in every new session gets old. `hooks/poteto-auto-arm.sh` 
 touch ~/.claude/pstack-cc/always-on
 ```
 
-Remove that file to stop arming new sessions. `/poteto-off` still unpins the session you are
-in, because `SessionStart` does not run again mid-session.
+Remove that file to stop arming new sessions. Only `source=startup` arms, so `/poteto-off`
+holds for the rest of the session: `SessionStart` fires again on resume, clear, compact and
+fork, and none of those re-pin what you turned off. A forked session starts unpinned for the
+same reason.
 
 ## Panels stay cross-vendor
 
