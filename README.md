@@ -18,7 +18,7 @@ plugin, regenerated for Claude Code.
 | `transform/frontmatter.py` | drops Cursor-only keys, slugs names, extracts the poteto-mode reminder |
 | `overlay/` | whole-file replacements for what a regex cannot fix |
 | `transform/forbid.txt` | patterns that must **not** survive — a hit fails the build |
-| `tests/` | a frontmatter linter and functional tests for the hook |
+| `tests/` | a frontmatter linter and functional tests for the hooks |
 
 To update: bump `UPSTREAM_REF` in `import.sh`, run it, read the diff.
 
@@ -77,6 +77,18 @@ hook) reproduces it:
 
 The reminder text is extracted from upstream's own frontmatter at import time, so it tracks
 upstream rather than drifting.
+
+Typing `/poteto-mode` in every new session gets old. `hooks/poteto-auto-arm.sh` is a
+`SessionStart` hook that pins the mode for you, and it is off until you ask for it:
+
+```bash
+touch ~/.claude/pstack-cc/always-on
+```
+
+Remove that file to stop arming new sessions. Only `source=startup` arms, so `/poteto-off`
+holds for the rest of the session: `SessionStart` fires again on resume, clear, compact and
+fork, and none of those re-pin what you turned off. A forked session starts unpinned for the
+same reason.
 
 ## Panels stay cross-vendor
 
