@@ -1,6 +1,6 @@
 # Port record — pstack (Cursor) → pstack-cc (Claude Code)
 
-Upstream: `cursor/plugins` @ `032be146865d973682535de75f2287da438550bf`, `pstack/` only.
+Upstream: `cursor/plugins` @ `e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a`, `pstack/` only.
 Every decision below is implemented in `transform/` or `overlay/`, never by hand-editing
 generated output.
 
@@ -11,6 +11,9 @@ generated output.
 | `.cursor-plugin/plugin.json` | `.claude-plugin/plugin.json` + `marketplace.json` | The upstream repo has **no** `.claude-plugin/` and no `marketplace.json`, so there was nothing to install. |
 | `displayName`, `logo`, `category`, `tags`, `skills`, `agents` keys | dropped | `MEASURED:` not present in any real Claude Code `plugin.json` on this machine; `skills/` and `agents/` are auto-discovered. `category`/`tags` are marketplace-entry keys and moved there. |
 | — | `hooks/hooks.json` | `MEASURED:` auto-discovered, not referenced from `plugin.json` (same as superpowers 6.3.0). |
+| plugin at the repo root (`source: "./"`) | `plugins/pstack-cc/` | An install copies the plugin directory, and at the root that meant `transform/`, `tests/`, `docs/` and `reference/` (images included) went into every cache. `MEASURED:` a marketplace install from the new layout contains only `LICENSE`, `agents`, `bin`, `hooks`, `skills`. |
+| `"version": "0.1.0"` | no `version` | `MEASURED:` the install reports `Version: 7ed20aaed090`, the commit SHA, so every push is an update. A changelog (`CHANGES.md`, enforced in CI) replaces the version as the record. |
+| — | `own/agents/read-only.md` | Cursor's `readonly: true` spawn flag has no Claude Code parameter; the agent (no Edit/Write/NotebookEdit/Agent) is the equivalent. `transform/readonly.py` rewrites the five spawn specs, failing on any count mismatch. |
 
 **`claude plugin validate` does not check SKILL.md.** `MEASURED:` reintroducing `mode`,
 `icon`, `color` and `reminder` on a skill still passed validation. `tests/lint-skills.py`
@@ -23,11 +26,23 @@ Dropped from `poteto-mode` (Cursor-only, no Claude Code meaning): `mode`, `icon`
 the stickiness hook, so it tracks upstream.
 
 Names slugged to lowercase-hyphen: `Poteto Mode` → `poteto-mode`, `Make Bot UI` →
-`make-bot-ui`, `Comment Sicko` → `comment-sicko` (and the reference at
-`no-comments/SKILL.md`). `is_background:` → `background:`.
+`make-bot-ui`, `Comment Sicko` → `comment-sicko`. `is_background:` → `background:`.
+Plugin agents are dispatched by their namespaced name, `pstack-cc:poteto-agent` and
+`pstack-cc:comment-sicko`. An earlier version of this record claimed the `no-comments`
+reference was slugged. It was not: it still spawned `subagent_type: "Comment Sicko"`, which
+resolves to nothing. The forbid gate now rejects the bare and display forms.
 
-Kept unchanged: `disable-model-invocation` (46 skills) and `paths` — both are supported here
-with the same meaning. This is why the pack is slash-only and cannot degrade skill routing.
+**`disable-model-invocation` is dropped**, except on `make-bot-ui`. An earlier version kept it
+on 49 skills on the theory that it only kept them out of automatic routing. In Claude Code it
+does more than that: when Claude calls a skill that carries it, the Skill tool **refuses** the
+call ([docs](https://code.claude.com/docs/en/skills)). Upstream's skills invoke one another:
+poteto-mode routes to `how`, `why`, `arena` and the principle skills, and the pinned reminder
+says "apply /poteto-mode". Every one of those calls was being refused. The descriptions are
+explicit ("Use for /how"), so the skills don't trigger on unrelated requests. `make-bot-ui`
+keeps the flag because it has side effects and nothing routes to it. `tests/lint-skills.py`
+fails on the key anywhere else.
+
+Kept unchanged: `paths`, which means the same thing here.
 
 ## 3. Mechanisms with no Claude Code equivalent — what replaced them
 
@@ -39,20 +54,25 @@ with the same meaning. This is why the pack is slash-only and cannot degrade ski
 | Cursor built-in `create-skill` | `anthropic-skills:skill-creator`. |
 | `cursor-team-kit`'s `control-ui` / `control-cli` | The built-in browser tools (`mcp__Claude_Browser__*`) and Bash/tmux. |
 | `/deslop` (`cursor-team-kit`) | `/pstack-cc:unslop`, which is the same job and ships here. |
-| `~/.cursor/projects/<slug>/agent-transcripts/` | `~/.claude/projects/<slug>/`. |
+| `~/.cursor/projects/<slug>/agent-transcripts/`, "named in the system prompt" | `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<session-id>/subagents/`. `MEASURED:` the slug keeps its leading dash (`-home-user-pstack-cc`), and no system prompt names the directory, so the skills now say how to build it, and SKILL.md files name `${CLAUDE_SESSION_ID}.jsonl`. |
 | `~/.cursor/plugins/` | `~/.claude/plugins/`. |
-| Cursor cloud agents (`environment: "cloud"`) | Left as prose. Nearest equivalents are an `Agent` with `isolation: "worktree"` and a cloud session; neither is a drop-in, so the playbooks that assume one VM per PR (`orchestrate`, both `autopilot-*`) are **the least faithful part of this port**. |
+| Cursor cloud agents (`environment: "cloud"`, `cloud_base_branch`, the Cursor dashboard) | A background `Agent` with `isolation: "worktree"`. This is not a drop-in replacement for one VM per PR, so `orchestrate` and both `autopilot-*` playbooks are still **the least faithful part of this port**. |
+| `readonly: false` ("agent mode", so MCP stays available) | Dropped. Claude Code subagents get MCP tools without a flag. |
 
 ## 4. Model slugs
 
-Upstream's 69 slug references across 15 files map to Claude Code aliases:
+Upstream's slugs map to Claude Code aliases. The rules match every effort suffix, so an
+upstream budget change (`-max` → `-medium`) maps instead of leaking:
 
 | Upstream | Here |
 |---|---|
-| `claude-opus-5-thinking-xhigh` | `opus` |
-| `claude-fable-5-1-thinking-max` | `fable` |
-| `gpt-5.6-sol-max` | `opus` |
-| `grok-4.6-fast-xhigh` | `sonnet` |
+| `claude-opus-5-5-{max,xhigh,high,medium,low}` | `opus` |
+| `gpt-5.6-sol-max` | `gpt-5.6-sol`, a `panelist` seat (was `opus`; reflect's tooling reviewer, which needs files and MCP, stays `opus`) |
+| `grok-4.7-{…}-fast` | `sonnet` |
+| `claude-fable-5-1-thinking-*`, `grok-4.6-fast*` | `fable`, `sonnet` (pre-`e43c7ee`; kept so a return maps) |
+
+At `e43c7ee` upstream moved every Fable role (judgment, prose, explainer, synthesizer) to Opus
+5.5, so `setup-pstack`'s defaults follow: those roles are `opus` here too.
 
 **Recovered, not lost.** `arena`, `interrogate`, `swarm` and `architect` were built on
 *cross-vendor* panels — `interrogate/SKILL.md` says the adversarial signal comes from model
@@ -108,11 +128,35 @@ modifier** and silently mangles the URL to `models/5-flashnerateContent`. Brace 
 - **`worktree-cleanup` / `worktree-audit.sh`** work, but their liveness signal was Cursor
   transcript mtime plus pinned sidebar chats. If you already have a heartbeat-based sweeper,
   prefer it — `worktree-cleanup.md:9` does `git worktree remove --force` plus `rm -rf`.
+- **`worktree-audit.sh` is BSD-only.** It uses `stat -f` and `date -r <epoch>`, which mean
+  something else on GNU/Linux, so its AGE and LAST_CHAT columns are wrong there. Worktree
+  cleanup does not apply in a cloud container anyway.
 - **Nothing here has been run inside a live Claude Code session yet.** The generator, linter
   and hook tests all pass; skill *behaviour* under the real harness is unverified until the
   plugin is installed and used.
 
-## 7. The forbid gate
+## 7. Cloud sessions
+
+A cloud session ignores plugins enabled in a repo's `.claude/settings.json` and in user
+settings. It loads a plugin from `CLAUDE_CODE_PLUGIN_DIRS` (`MEASURED:` `claude plugin list`
+reports `pstack-cc@inline … loaded` with all 50 skills, 2 agents and both hook events) or from
+server-managed settings. Install steps for both are in the README.
+
+What differs inside one, all `MEASURED:` in a cloud container:
+
+| Fact | Consequence | Handled by |
+|---|---|---|
+| `gh pr list` → HTTP 403 "GitHub GraphQL is not available from Claude Code sessions"; `gh api repos/…` works | `watch-pr` and every `gh pr …` line in the playbooks fail; `watch-pr`'s errors are retryable, so it would poll forever | `overlay/…/watch-pr/watch-pr` exits 69 when `CLAUDE_CODE_REMOTE=true`; `hooks/cloud-session.sh` points at `mcp__github__*` and `subscribe_pr_activity` |
+| `codex`, `gt` absent | OpenAI seats crashed with an uncaught `FileNotFoundError` | `panelist` returns a clean error, or uses the OpenAI API when `OPENAI_API_KEY` is set |
+| `$HOME` is fresh per session | `~/.claude/.env`, `~/.claude/pstack-models.md` and `~/.claude/pstack-cc/always-on` never persist | keys from the environment; repo `.claude/pstack-models.md` copied home by the hook; `PSTACK_CC_ALWAYS_ON=1` |
+| No desktop browser pane; Chromium at `/opt/pw-browsers` | `mcp__Claude_Browser__*` references dead | the hook names Playwright |
+
+The skills themselves are **not** rewritten for the cloud. One `SessionStart` note costs a few
+hundred tokens once per session and keeps fifty generated files identical to upstream; forking
+them would turn every upstream sync into a merge. `tests/cloud-session.sh` covers the hook,
+the auto-arm variable, the `watch-pr` guard and `panelist`'s key lookup, offline.
+
+## 8. The forbid gate
 
 `transform/forbid.txt` lists patterns that must not survive into `skills/` or `agents/`:
 `.cursor/`, `cursor-agent`, `CURSOR_*`, `cursor-team-kit`, `pstack-models.mdc`,

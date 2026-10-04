@@ -1,6 +1,6 @@
 # Rules that legitimately fire ZERO times against the current upstream ref.
 # audit.py fails the build on any other dead rule, so each line here is a claim
-# a human checked. Verified 2026-09-19 against 032be14 by grepping upstream.
+# a human checked. Verified 2026-10-04 against e43c7ee by grepping upstream.
 #
 # Re-check these when bumping UPSTREAM_REF: a rule listed here is silenced, so if
 # upstream starts using the phrasing it targets you will not be told.
@@ -12,8 +12,10 @@
 9    # "Task calls" -- 0 anywhere upstream. Defensive variant.
 10   # "the Task" -- 3 upstream hits, but rule 8 (`\bTask tool\b`) consumes them first;
      # verified interrogate:36 emits "the Agent tool". Superseded, kept as a net.
-16   # grok-4.6-fast (bare) -- 28 upstream hits, all inside grok-4.6-fast-xhigh, which
-     # rule 15 replaces wholesale first. Superseded.
+13   # claude-fable-5-1-thinking-* -- 0 since e43c7ee: upstream moved every Fable role
+     # to claude-opus-5-5-max (#414). Kept so a Fable slug coming back maps, not leaks.
+16   # grok-4.6-fast (bare) -- 0 since e43c7ee: upstream moved to grok-4.7-*-fast, which
+     # rule 15 maps. Kept for the 4.6 form; the forbid gate catches any other version.
 23   # `/create-skill` (backticked slash form) -- 0 anywhere upstream. Defensive.
 29   # "in Cursor" -- 0 in skills|agents. Defensive.
 37   # `control-ui` or `control-cli` from `cursor-team-kit` -- superseded by the precise

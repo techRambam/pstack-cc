@@ -18,10 +18,10 @@ s{\bthe Task\b}{the Agent}g;
 s{\bis_background:}{background:}g;
 
 # --- model slugs -> Claude Code model aliases --------------------------
-s{\bclaude-opus-5-thinking-xhigh\b}{opus}g;
-s{\bclaude-fable-5-1-thinking-max\b}{fable}g;
-s{\bgpt-5\.6-sol-max\b}{opus}g;
-s{\bgrok-4\.6-fast-xhigh\b}{sonnet}g;
+s{\bclaude-opus-5-5-(?:max|xhigh|high|medium|low)\b}{opus}g;
+s{\bclaude-fable-5-1-thinking-(?:max|xhigh|high|medium|low)\b}{fable}g;
+s{\bgpt-5\.6-sol-max\b}{gpt-5.6-sol}g;
+s{\bgrok-4\.7-(?:max|xhigh|high|medium|low)-fast\b}{sonnet}g;
 s{\bgrok-4\.6-fast\b}{sonnet}g;
 
 # --- merge policy: the house rule is a merge commit, never a squash ----
@@ -48,7 +48,7 @@ s{~/\.cursor/rules/pstack-models\.mdc}{~/.claude/pstack-models.md}g;
 
 # --- remaining Cursor paths --------------------------------------------
 s{~/\.cursor/plugins/}{~/.claude/plugins/}g;
-s{\$HOME/\.cursor/projects/\$slug/agent-transcripts}{$HOME/.claude/projects/$slug}g;
+s{\$HOME/\.cursor/projects/\$slug/agent-transcripts}{\$HOME/.claude/projects/\$slug}g;
 s{\.cursor/worktrees/}{.claude/worktrees/}g;
 s{~/Library/Application Support/Cursor}{~/Library/Application Support/Claude}g;
 
@@ -73,3 +73,53 @@ s{"CURSOR_AUTOMATION_ID: }{"AUTOMATION_ID: }g;
 # --- a remote API, so it takes the 300s floor rather than upstream's 60s.
 s{\.option\(\s*"--interval <seconds>",\s*"([^"]*)",\s*"60"}{.option("--interval <seconds>", "$1", "300"}g;
 s{\.option\("--interval <seconds>", "poll interval", positiveNumber, 60\)}{.option("--interval <seconds>", "poll interval", positiveNumber, 300)}g;
+# --- and the parseArgs defaults test asserts that same default, or `bun test` fails.
+s{^(\s+)interval: 60,$}{${1}interval: 300,};
+# --- multi-phase-plan names check-plan by its path in UPSTREAM's monorepo, which exists
+# --- nowhere here. Same base as every other poteto-mode script: the skill directory.
+s{node pstack/skills/poteto-mode/scripts/check-plan\.mjs}{node scripts/check-plan.mjs}g;
+# --- since #422 upstream names the model rule bare, without its ~/.cursor/rules/ path.
+s{the `pstack-models\.mdc` rule}{`~/.claude/pstack-models.md`}g;
+
+# --- plugin agents are namespaced <plugin>:<agent>; a bare or display name does not resolve.
+s{subagent_type: "Comment Sicko"}{subagent_type: "pstack-cc:comment-sicko"}g;
+s{subagent_type: "poteto-agent"}{subagent_type: "pstack-cc:poteto-agent"}g;
+s{Spawn `Task` with}{Spawn an `Agent` with}g;
+s{`Task`}{`Agent`}g;
+
+# --- Cursor agent parameters with no Claude Code meaning. Claude Code subagents get
+# --- MCP tools by default, so "agent mode" needs no flag; a separate cloud VM per
+# --- worker becomes a separate worktree.
+s{, agent mode \(`readonly: false`\)}{}g;
+s{, agent mode \(readonly strips MCP\)}{}g;
+s{`environment: "cloud"`}{`isolation: "worktree"`}g;
+s{When a worker must start from a non-default pushed branch, pass `cloud_base_branch`\.}{When a worker must start from a non-default pushed branch, name the branch in its brief so it checks that branch out first.}g;
+s{the cloud agent's status}{the background agent's status}g;
+
+# --- transcripts: Claude Code keeps ~/.claude/projects/<slug>/<session-id>.jsonl with
+# --- subagents under <session-id>/subagents/. There is no agent-transcripts/ level, the
+# --- slug keeps its leading dash, and no system prompt names the directory.
+s{`~/\.claude/projects/<slug>/agent-transcripts/<uuid>/<uuid>\.jsonl`, where `<slug>` is the workspace path with the leading slash dropped and each "/" turned into "-" \(so `/Users/you/proj` becomes `Users-you-proj`\)}{`~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<session-id>/subagents/`, where `<slug>` is the workspace path with every character that is not a letter or digit turned into "-" (so `/Users/you/proj` becomes `-Users-you-proj`)}g;
+s{The system prompt names (?:the active|the) workspace's `agent-transcripts/` directory\. Use (?:only )?that path\.}{The active workspace's transcripts, `<transcripts>` below, are in `~/.claude/projects/<slug>/`, where `<slug>` is the workspace path with every character that is not a letter or digit turned into "-". This session's own file there is `\${CLAUDE_SESSION_ID}.jsonl`. Use only that directory.}g;
+s{<agent-transcripts>}{<transcripts>}g;
+s{`agent-transcripts/` directory \(the system prompt names (?:the|this) path}{transcript directory, `~/.claude/projects/<slug>/` (`<slug>` is the workspace path with every character that is not a letter or digit turned into "-"}g;
+s{local transcripts under `agent-transcripts/`}{local transcripts under `~/.claude/projects/`}g;
+s{# Transcripts dir: ~/\.claude/projects/<slugified-repo-path>/agent-transcripts\.}{# Transcripts dir: ~/.claude/projects/<slug>, every non-alphanumeric byte -> "-".};
+s{sed 's#\^/##; s#/#-#g'}{sed 's#[^A-Za-z0-9]#-#g'};
+
+# --- remaining Cursor built-ins.
+s{Cursor's built-in `skill-creator` skill}{the `anthropic-skills:skill-creator` skill}g;
+s{Cursor's built-in `skill-creator`}{the `anthropic-skills:skill-creator` skill}g;
+s{Cursor's built-in babysit skill}{any other installed babysit skill}g;
+s{Cursor's `/loop` command \(a built-in, not a pstack skill\)}{Claude Code's `/loop` skill (a built-in, not a pstack skill)}g;
+s{list the available MCPs from the Cursor environment\. Use the available-tools map when present\. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers\.}{list the MCP servers connected to this session: their tools are named `mcp__<server>__<tool>`, and deferred ones are found with ToolSearch.}g;
+s{each a Cursor cloud agent,}{each a background `Agent` in its own worktree,}g;
+s{One Cursor cloud agent per PR}{One background `Agent` per PR, in its own worktree,}g;
+s{with Cursor's `/loop` command}{with Claude Code's `/loop` skill}g;
+s{the background agent's status in the Cursor dashboard}{the background agent's last output}g;
+
+# --- upstream's GPT panel seat is a GPT seat again, through bin/panelist, instead of
+# --- a second opus: same model diversity upstream designed, and it does not count
+# --- against Claude plan limits. reflect's tooling reviewer needs files and MCP,
+# --- which a panelist seat does not have, so that one stays an Anthropic agent.
+s{\| `reflect tooling` \| `gpt-5\.6-sol` \|}{| `reflect tooling` | `opus` |}g;

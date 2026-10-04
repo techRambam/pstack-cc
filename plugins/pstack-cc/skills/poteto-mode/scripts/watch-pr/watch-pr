@@ -1,0 +1,21 @@
+#!/usr/bin/env bun
+// pstack-cc overlay: upstream's entry point plus a cloud-session guard.
+//
+// watch-pr reads PR state through `gh` GraphQL, which a Claude Code cloud
+// session's proxy refuses. Its query errors are retryable, so without this
+// guard it would poll a refusal forever instead of failing. Exit 69
+// (EX_UNAVAILABLE) is outside the verdict codes 0-7 and the usage code 64.
+if (process.env.CLAUDE_CODE_REMOTE === "true" && process.env.WATCH_PR_ALLOW_REMOTE !== "1") {
+  console.error(
+    "watch-pr: unavailable in a Claude Code cloud session (gh GraphQL is refused there).\n" +
+      "Subscribe to the PR's activity (subscribe_pr_activity) and read state with the\n" +
+      "mcp__github__* tools instead. Set WATCH_PR_ALLOW_REMOTE=1 where gh is fully authenticated.",
+  );
+  process.exit(69);
+}
+
+import { ensureDependenciesInstalled } from "../bootstrap.ts";
+
+ensureDependenciesInstalled();
+const { main } = await import("./cli.ts");
+process.exitCode = await main(process.argv.slice(2));

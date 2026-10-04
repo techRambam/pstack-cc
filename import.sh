@@ -10,8 +10,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPSTREAM_REPO="https://github.com/cursor/plugins.git"
-UPSTREAM_REF="032be146865d973682535de75f2287da438550bf"
+UPSTREAM_REF="e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a"
 SRC="$ROOT/upstream/pstack"
+# The installable plugin. Everything else in this repo (transform/, tests/, docs/,
+# reference/) is the generator and stays out of every install.
+PLUGIN="$ROOT/plugins/pstack-cc"
 
 ACCEPT=""
 for a in "$@"; do [ "$a" = "--accept-overlay" ] && ACCEPT="--accept-overlay"; done
@@ -32,10 +35,11 @@ log "upstream at $(git -C "$ROOT/upstream" rev-parse --short HEAD)"
 
 # --- 2. clean copy ------------------------------------------------------
 log "copying skills/ agents/"
-rm -rf "$ROOT/skills" "$ROOT/agents"
-cp -R "$SRC/skills" "$ROOT/skills"
-cp -R "$SRC/agents" "$ROOT/agents"
+rm -rf "$PLUGIN/skills" "$PLUGIN/agents"
+cp -R "$SRC/skills" "$PLUGIN/skills"
+cp -R "$SRC/agents" "$PLUGIN/agents"
 cp "$SRC/LICENSE" "$ROOT/LICENSE.upstream"
+cp "$SRC/LICENSE" "$PLUGIN/LICENSE"
 
 # Reference material: upstream's own guide, and the benny automation sources.
 # Not skills (nothing under reference/ is discovered), so they are exempt from
@@ -51,16 +55,18 @@ log "applying transform/rules.pl"
 COUNTS="$(mktemp)"; RULES_C="$(mktemp)"
 trap 'rm -f "$COUNTS" "$RULES_C"' EXIT
 python3 "$ROOT/transform/build-counting-rules.py" "$ROOT/transform/rules.pl" "$RULES_C" "$COUNTS"
-find "$ROOT/skills" "$ROOT/agents" -type f \
+find "$PLUGIN/skills" "$PLUGIN/agents" -type f \
   \( -name '*.md' -o -name '*.ts' -o -name '*.mjs' -o -name '*.sh' -o -name '*.json' \) \
   -print0 | xargs -0 perl -pi "$RULES_C"
 
 # --- 4. frontmatter normalisation --------------------------------------
 log "normalising frontmatter"
-python3 "$ROOT/transform/frontmatter.py" "$ROOT/skills" "$ROOT/agents"
+python3 "$ROOT/transform/frontmatter.py" "$PLUGIN/skills" "$PLUGIN/agents"
 
 log "wiring cross-vendor panels"
 python3 "$ROOT/transform/panels.py"
+log "mapping readonly spawns"
+python3 "$ROOT/transform/readonly.py" || die "readonly mapping failed (see above)"
 
 # --- 5. overlay (hand-written replacements win) -------------------------
 if [ -d "$ROOT/overlay" ] && [ -n "$(find "$ROOT/overlay" -type f -print -quit)" ]; then
@@ -72,10 +78,26 @@ if [ -d "$ROOT/overlay" ] && [ -n "$(find "$ROOT/overlay" -type f -print -quit)"
   # mistaken for a stray.
   (cd "$ROOT/overlay" && find . -type f -not -name UPSTREAM-BASE.sha256 -print0) | \
     while IFS= read -r -d '' f; do
-      mkdir -p "$ROOT/$(dirname "${f#./}")"
-      cp "$ROOT/overlay/${f#./}" "$ROOT/${f#./}"
+      mkdir -p "$PLUGIN/$(dirname "${f#./}")"
+      cp "$ROOT/overlay/${f#./}" "$PLUGIN/${f#./}"
       printf '    overlay: %s\n' "${f#./}"
     done
+fi
+
+# --- 5b. own/: files this port adds that upstream never had -----------------
+# overlay/ only REPLACES upstream files (audit.py fails an overlay with no upstream
+# counterpart). A file that exists only here lives in own/ instead, and the reverse
+# guard applies: if upstream later ships the same path, that is a collision to
+# resolve by hand, not something to overwrite silently.
+if [ -d "$ROOT/own" ]; then
+  log "applying own/"
+  while IFS= read -r -d '' f; do
+    rel="${f#./}"
+    [ -e "$SRC/$rel" ] && die "own/$rel now exists upstream too -- move it to overlay/ or rename it"
+    mkdir -p "$PLUGIN/$(dirname "$rel")"
+    cp "$ROOT/own/$rel" "$PLUGIN/$rel"
+    printf '    own: %s\n' "$rel"
+  done < <(cd "$ROOT/own" && find . -type f -print0)
 fi
 
 log "auditing rule coverage + overlay drift"
@@ -90,18 +112,18 @@ while IFS= read -r pat; do
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     file="${line%%:*}"
-    rel="${file#$ROOT/}"
+    rel="${file#"$ROOT"/}"
     if [ -f "$EXEMPT" ] && grep -qxF "$rel" "$EXEMPT"; then continue; fi
     # A blockquoted "ported from upstream" note may name what it replaced.
     content="${line#*:}"; content="${content#*:}"
     case "$content" in [[:space:]]*\>*|\>*) continue ;; esac
     printf '  \033[1;33m%s\033[0m  %s\n' "$pat" "$rel"
     hits=$((hits+1))
-  done < <(grep -rEn "$pat" "$ROOT/skills" "$ROOT/agents" 2>/dev/null || true)
+  done < <(grep -rEn "$pat" "$PLUGIN/skills" "$PLUGIN/agents" 2>/dev/null || true)
 done < "$ROOT/transform/forbid.txt"
 
 echo
-log "generated $(find "$ROOT/skills" -name SKILL.md | wc -l | tr -d ' ') skills, $(find "$ROOT/agents" -name '*.md' | wc -l | tr -d ' ') agents"
+log "generated $(find "$PLUGIN/skills" -name SKILL.md | wc -l | tr -d ' ') skills, $(find "$PLUGIN/agents" -name '*.md' | wc -l | tr -d ' ') agents"
 if [ "$hits" -gt 0 ]; then
   die "$hits unported Cursor reference(s) above. Fix transform/rules.pl or add an overlay/, or exempt the path in transform/allow-cursor.txt with a reason in docs/PORT.md."
 fi
@@ -112,4 +134,9 @@ python3 "$ROOT/tests/lint-skills.py" || die "lint failed"
 log "testing the stickiness hook"
 bash "$ROOT/tests/poteto-mode-hook.sh" >/dev/null || die "hook tests failed"
 bash "$ROOT/tests/poteto-auto-arm.sh" >/dev/null || die "auto-arm tests failed"
+log "testing cloud-session support"
+bash "$ROOT/tests/cloud-session.sh" >/dev/null || die "cloud-session tests failed"
+log "testing the budget hook and usage report"
+bash "$ROOT/tests/budget.sh" >/dev/null || die "budget tests failed"
+bash "$ROOT/tests/pstack-usage.sh" >/dev/null || die "pstack-usage tests failed"
 log "clean"

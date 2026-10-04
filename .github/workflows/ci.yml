@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    # import.sh is the build: it re-derives the plugin from the pinned upstream
+    # ref and runs every guard (dead rules, overlay drift, forbid gate, lint and
+    # cross-references, hook and cloud-session tests). A non-empty diff afterwards
+    # means the committed output was hand-edited or not regenerated.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Regenerate from upstream and run every guard
+        run: ./import.sh
+      - name: Committed output matches the generator
+        run: git diff --exit-code --stat
+      - name: poteto-mode script tests
+        working-directory: plugins/pstack-cc/skills/poteto-mode/scripts
+        run: |
+          bun install --frozen-lockfile
+          bun test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install linters
+        run: pip install --quiet shellcheck-py==0.11.0.1 actionlint-py==1.7.12.25
+      # Our own shell only: the hooks run on every prompt and session start, so a
+      # quoting bug there breaks every session. Upstream's scripts are generated
+      # and stay as upstream wrote them.
+      - name: shellcheck
+        run: shellcheck import.sh plugins/pstack-cc/hooks/*.sh tests/*.sh
+      - name: actionlint
+        run: actionlint
+
+  changelog:
+    # Installs update on every commit (no version pin), so CHANGES.md is the only
+    # record of what an update brought. A PR that changes the plugin must say so.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Plugin changes come with a CHANGES.md entry
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed="$(git diff --name-only "$BASE"...HEAD)"
+          if grep -q '^plugins/' <<<"$changed" && ! grep -qx 'CHANGES.md' <<<"$changed"; then
+            echo "::error::This PR changes plugins/ but not CHANGES.md. Add a line under 'Unreleased'."
+            exit 1
+          fi

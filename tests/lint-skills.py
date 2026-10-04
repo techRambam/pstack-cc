@@ -7,12 +7,16 @@ passed validation). This is the check that actually catches a bad port.
 """
 import re, sys, pathlib
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
-SKILL_OK = {"name", "description", "disable-model-invocation", "allowed-tools",
+ROOT = pathlib.Path(__file__).resolve().parent.parent / "plugins" / "pstack-cc"
+SKILL_OK = {"name", "description", "allowed-tools", "user-invocable",
             "license", "paths", "model", "version"}
 AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
             "background", "isolation", "permissionMode", "maxTurns", "skills",
             "effort", "memory", "omitClaudeMd"}
+# Slash-only on purpose: side effects (it wires a UI that triggers agent runs and holds
+# a server-side secret) and no pstack skill routes to it. Every other skill must stay
+# invocable by Claude, or the skills that route to it are refused.
+SLASH_ONLY_OK = {"make-bot-ui"}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 def fm(p):
@@ -39,7 +43,14 @@ for p in skills:
     d = f.get("description", "")
     if not d: errs.append(f"{rel}: missing description")
     elif len(d) > 1536: errs.append(f"{rel}: description {len(d)} chars > 1536")
-    for k in set(f) - SKILL_OK: errs.append(f"{rel}: unsupported key {k!r}")
+    for k in set(f) - SKILL_OK:
+        if k == "disable-model-invocation" and name in SLASH_ONLY_OK:
+            continue
+        if k == "disable-model-invocation":
+            errs.append(f"{rel}: disable-model-invocation makes the Skill tool refuse the call, "
+                        f"so other pstack skills cannot route here (transform/frontmatter.py)")
+        else:
+            errs.append(f"{rel}: unsupported key {k!r}")
 
 agents = sorted((ROOT / "agents").glob("*.md"))
 for p in agents:
@@ -49,7 +60,40 @@ for p in agents:
     if not NAME_RE.match(n): errs.append(f"{rel}: agent name {n!r} is not lowercase-hyphen")
     for k in set(f) - AGENT_OK: errs.append(f"{rel}: unsupported agent key {k!r}")
 
-print(f"linted {len(skills)} skills, {len(agents)} agents")
+# --- references between skills ----------------------------------------------
+# An upstream sync can rename a playbook, reference or skill that another file still
+# points at; nothing else notices until an agent follows the dead link mid-task.
+# Paths resolve against the referring file's directory, then the skill root (the
+# poteto-mode playbooks name scripts/... relative to the skill). Names resolve
+# against this plugin's skills and agents.
+EXTERNAL = {"skill-creator"}  # anthropic-skills:skill-creator, not ours
+PATH_RE = re.compile(r"`((?:\.\./)*(?:playbooks|references|scripts)/[A-Za-z0-9_./-]+)`"
+                     r"|\]\(((?:\.\./)*(?:playbooks|references|scripts)/[A-Za-z0-9_./-]+)\)")
+NS_RE = re.compile(r"pstack-cc:([a-z0-9-]+)")
+BOLD_RE = re.compile(r"\*\*([a-z0-9-]+)\*\* (?:principle )?skill")
+skill_names = {p.parent.name for p in skills}
+agent_names = {p.stem for p in agents}
+checked = 0
+for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
+    rel = md.relative_to(ROOT)
+    skill_root = ROOT / "skills" / rel.parts[1] if rel.parts[0] == "skills" else md.parent
+    text = md.read_text(encoding="utf-8")
+    for m in PATH_RE.finditer(text):
+        ref = (m.group(1) or m.group(2)).rstrip(".")
+        if "<" in ref or "*" in ref: continue
+        checked += 1
+        if not ((md.parent / ref).exists() or (skill_root / ref).exists()):
+            errs.append(f"{rel}: dead reference {ref!r}")
+    for m in NS_RE.finditer(text):
+        checked += 1
+        if m.group(1) not in skill_names | agent_names:
+            errs.append(f"{rel}: pstack-cc:{m.group(1)} names no skill or agent in this plugin")
+    for m in BOLD_RE.finditer(text):
+        n = m.group(1); checked += 1
+        if n not in skill_names | EXTERNAL and f"principle-{n}" not in skill_names:
+            errs.append(f"{rel}: **{n}** skill does not exist")
+
+print(f"linted {len(skills)} skills, {len(agents)} agents, {checked} cross-references")
 for e in errs: print("  FAIL " + e)
 print(f"\n{len(errs)} problem(s)")
 sys.exit(1 if errs else 0)
