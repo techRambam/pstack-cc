@@ -38,6 +38,11 @@ ${CLAUDE_PLUGIN_ROOT}/bin/panelist run -m gpt-5.6-sol -p /tmp/seat-a.md --schema
 ${CLAUDE_PLUGIN_ROOT}/bin/panelist run -m gemini-3-flash-preview -p /tmp/seat-b.md --schema /tmp/verdict.json
 ```
 
+A `gpt-*`, `gemini-*` or `vendor:model` entry in a model line or a default table
+is one of these seats; never pass it to the `Agent` tool's `model`. A seat that must
+produce a candidate (an arena runner) returns it as a unified diff or whole files
+in its answer, and you write that into the candidate's slot.
+
 Write the seat's prompt to a file and pass `-p`; write one plain JSON Schema and
 pass the same `--schema` file to every seat. `panelist` converts it per vendor
 (OpenAI strict mode and Gemini's OpenAPI subset disagree about `required` and

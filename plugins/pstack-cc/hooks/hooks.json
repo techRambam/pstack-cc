@@ -12,6 +12,11 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/cloud-session.sh\"",
             "shell": "bash"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/budget.sh\"",
+            "shell": "bash"
           }
         ]
       }

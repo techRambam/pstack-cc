@@ -29,7 +29,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt. Each candidate produces a design package shaped per `references/rationale-template.md`.
 
-Take the runners from the `architect runners` line in `~/.claude/pstack-models.md`, in place of the `arena runners` line. If the rule or that line is missing, use `opus`, `opus`, `sonnet`. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
+Take the runners from the `architect runners` line in `~/.claude/pstack-models.md`, in place of the `arena runners` line. If the rule or that line is missing, use `opus`, `gpt-5.6-sol`, `sonnet`. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 
@@ -102,6 +102,11 @@ ${CLAUDE_PLUGIN_ROOT}/bin/panelist run -m gpt-5.6-sol -p /tmp/seat-a.md --schema
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/bin/panelist run -m gemini-3-flash-preview -p /tmp/seat-b.md --schema /tmp/verdict.json
 ```
+
+A `gpt-*`, `gemini-*` or `vendor:model` entry in a model line or a default table
+is one of these seats; never pass it to the `Agent` tool's `model`. A seat that must
+produce a candidate (an arena runner) returns it as a unified diff or whole files
+in its answer, and you write that into the candidate's slot.
 
 Write the seat's prompt to a file and pass `-p`; write one plain JSON Schema and
 pass the same `--schema` file to every seat. `panelist` converts it per vendor

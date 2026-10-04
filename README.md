@@ -143,6 +143,35 @@ skills stay identical to upstream instead of forking for the cloud:
 Proxy-injected **API credentials** (Pro and Max) never reach the environment, so `panelist`
 cannot use them yet. Use environment variables for panel keys.
 
+## Staying inside a subscription's limits
+
+On a Pro or Max plan, pstack's cost is mostly **subagents**: every panel seat, explorer,
+investigator and swarm worker is a fresh context that re-reads its files and thinks on its
+own. Three controls, in the order they pay off:
+
+1. **Budget** (`/pstack-cc:setup-pstack`): `max`, `balanced` (recommended on a plan), or `lean`.
+   It writes each role's model, and its `# budget:` line drives `hooks/budget.sh`, a
+   SessionStart hook that caps fan-out: 3 subagents per step on balanced, 2 on lean. It also
+   allows one Claude seat per panel and keeps arena, swarm and the autopilots for when you
+   name them. **With no config at all, the hook applies `balanced`.** `PSTACK_CC_BUDGET=max`
+   turns the caps off.
+2. **Non-Claude panel seats.** `gpt-*`, `gemini-*` and `vendor:model` seats run through
+   `panelist` and cost nothing against Claude limits. The skills' own default panels now use a
+   GPT seat where upstream does, instead of the second Opus seat this port used to put there.
+3. **Main session.** Spawns without a `model` inherit the main session's model and effort.
+   Per token, Fable 5.1 costs 2.5× Opus 5.5, which costs 2× Sonnet 5.5, which costs 2× Haiku
+   4.5. `pstack-cc:read-only` seats pin `effort: high` so they don't inherit `xhigh` or `max`.
+
+Measure instead of guessing. `pstack-usage` reads Claude Code's own transcripts and shows the
+share of usage by model, subagent type, effort and session, then says what to change first:
+
+```bash
+./plugins/pstack-cc/bin/pstack-usage --days 7
+```
+
+It prints token counts and metadata only, never message text. Shares are weighted by API price
+ratios: a good proxy for what drains a plan, not an exact meter.
+
 ## poteto-mode is sticky here
 
 Cursor pins a mode with `Opt+Enter` and re-injects its `reminder:` every turn. Claude Code

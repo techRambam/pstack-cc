@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""pstack-usage -- where did my Claude usage go?
+
+Reads Claude Code's own transcripts (~/.claude/projects/*/<session>.jsonl and
+their <session>/subagents/*.jsonl) and attributes token spend by model, by
+subagent type and by session, weighted by each model's relative price. Plan
+limits are not published as token counts, so the weighting is the API price
+ratio: a proxy for which work drains a plan fastest, not an exact meter.
+
+Usage
+  pstack-usage                    last 7 days, every project
+  pstack-usage --days 30          a longer window
+  pstack-usage --project pstack   only projects whose directory name contains this
+  pstack-usage --top 15           show more sessions and agent types
+
+Reads only token counts and metadata. It never prints prompt or response text.
+"""
+import argparse, collections, datetime, json, os, pathlib, sys
+
+# Relative weight per token, Sonnet 5.5 = 1 (API list prices, $/MTok: Fable 5.1
+# 10/50, Opus 5.5 4/20, Sonnet 5.5 2/10, Haiku 4.5 1/5). Cache reads are 10% of
+# input; cache writes are billed above input, approximated here as 1.25x.
+PRICE = {"fable": (5.0, 5.0), "mythos": (5.0, 5.0), "opus": (2.0, 2.0),
+         "sonnet": (1.0, 1.0), "haiku": (0.5, 0.5)}
+
+
+def family(model):
+    m = (model or "").lower()
+    for f in PRICE:
+        if f in m:
+            return f
+    return "other"
+
+
+def weight(fam, u):
+    pin, pout = PRICE.get(fam, (1.0, 1.0))
+    return (pin * (u.get("input_tokens", 0)
+                   + 1.25 * u.get("cache_creation_input_tokens", 0)
+                   + 0.1 * u.get("cache_read_input_tokens", 0))
+            + 5 * pout * u.get("output_tokens", 0)) / 1e6
+
+
+def rows(path, since):
+    seen = set()
+    try:
+        fh = path.open(encoding="utf-8")
+    except OSError:
+        return
+    with fh:
+        for line in fh:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if d.get("type") != "assistant":
+                continue
+            ts = d.get("timestamp", "")
+            try:
+                t = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if t < since:
+                continue
+            m = d.get("message") or {}
+            # One API response is logged once per content block; count it once.
+            key = d.get("requestId") or m.get("id")
+            if key in seen:
+                continue
+            seen.add(key)
+            u = m.get("usage") or {}
+            yield m.get("model"), u, d.get("effort")
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="pstack-usage", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--days", type=float, default=7)
+    ap.add_argument("--project", default="")
+    ap.add_argument("--top", type=int, default=8)
+    ap.add_argument("--root", default=str(pathlib.Path(os.environ.get(
+        "CLAUDE_CONFIG_DIR", pathlib.Path.home() / ".claude")) / "projects"))
+    a = ap.parse_args()
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=a.days)
+
+    by_model = collections.defaultdict(lambda: [0.0, 0, 0, 0])   # weight, out, thinking, calls
+    by_agent = collections.defaultdict(lambda: [0.0, 0])          # weight, spawns
+    by_session = collections.defaultdict(float)
+    by_effort = collections.defaultdict(float)
+    main_w = sub_w = 0.0
+
+    for proj in sorted(pathlib.Path(a.root).glob("*")):
+        if not proj.is_dir() or a.project not in proj.name:
+            continue
+        for sess in proj.glob("*.jsonl"):
+            label = f"{proj.name[-28:]}/{sess.stem[:8]}"
+            for model, u, eff in rows(sess, since):
+                w = weight(family(model), u)
+                main_w += w; by_session[label] += w; by_effort[eff or "?"] += w
+                r = by_model[family(model)]
+                r[0] += w; r[1] += u.get("output_tokens", 0)
+                r[2] += (u.get("output_tokens_details") or {}).get("thinking_tokens", 0); r[3] += 1
+            for sub in (proj / sess.stem / "subagents").glob("*.jsonl"):
+                try:
+                    meta = json.loads(sub.with_suffix(".meta.json").read_text())
+                except (OSError, ValueError):
+                    meta = {}
+                kind = meta.get("agentType", "?")
+                spent = 0.0
+                for model, u, eff in rows(sub, since):
+                    w = weight(family(model), u)
+                    spent += w; by_effort[eff or "?"] += w
+                    r = by_model[family(model)]
+                    r[0] += w; r[1] += u.get("output_tokens", 0)
+                    r[2] += (u.get("output_tokens_details") or {}).get("thinking_tokens", 0); r[3] += 1
+                if spent:
+                    sub_w += spent; by_session[label] += spent
+                    by_agent[kind][0] += spent; by_agent[kind][1] += 1
+
+    total = main_w + sub_w
+    if not total:
+        print(f"No assistant turns in the last {a.days:g} days under {a.root}.")
+        return
+    pct = lambda w: f"{100 * w / total:5.1f}%"
+    print(f"Weighted usage, last {a.days:g} days (Sonnet-5.5-equivalent MTok; a proxy, not a meter)\n")
+    print(f"  main sessions  {pct(main_w)}")
+    print(f"  subagents      {pct(sub_w)}\n")
+    print("By model             share   output tok   thinking tok   API calls")
+    for f, (w, out, th, n) in sorted(by_model.items(), key=lambda x: -x[1][0]):
+        print(f"  {f:<16}  {pct(w)}  {out:>11,}  {th:>13,}  {n:>10,}")
+    print("\nBy subagent type     share   spawns   share per spawn")
+    for k, (w, n) in sorted(by_agent.items(), key=lambda x: -x[1][0])[:a.top]:
+        print(f"  {k[:18]:<18}  {pct(w)}  {n:>6}   {pct(w / n)}")
+    print("\nBy effort            share")
+    for e, w in sorted(by_effort.items(), key=lambda x: -x[1]):
+        print(f"  {e:<18}  {pct(w)}")
+    print("\nTop sessions         share")
+    for s, w in sorted(by_session.items(), key=lambda x: -x[1])[:a.top]:
+        print(f"  {s:<38}  {pct(w)}")
+
+    # The levers, in the order they usually pay off. Thresholds are deliberately
+    # coarse: this flags where to look, the numbers above say how much it matters.
+    tips = []
+    if by_model["fable"][0] + by_model["mythos"][0] > 0.2 * total:
+        tips.append("Fable carries a large share. It costs 2.5x Opus per token: run the main "
+                    "session on Opus (/model) and keep Fable out of pstack-models.md.")
+    if by_effort.get("max", 0) + by_effort.get("xhigh", 0) > 0.4 * total:
+        tips.append("Most spend runs at xhigh/max effort. /effort high keeps most of the quality "
+                    "for routine work; raise it per task when a problem is hard.")
+    if sub_w > 0.5 * total:
+        tips.append("Subagents outspend the main sessions. Pick the 'balanced' budget in "
+                    "/pstack-cc:setup-pstack: it caps fan-out width and moves panel seats to "
+                    "non-Claude vendors.")
+    if by_agent and max(w / n for w, n in by_agent.values()) > 0.05 * total:
+        tips.append("Single spawns cost over 5% each. Brief subagents with file paths, not "
+                    "pasted context, and resume one instead of respawning for follow-ups.")
+    if tips:
+        print("\nWhat to change first")
+        for i, tip in enumerate(tips, 1):
+            print(f"  {i}. {tip}")
+
+
+if __name__ == "__main__":
+    main()

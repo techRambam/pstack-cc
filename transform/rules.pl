@@ -20,7 +20,7 @@ s{\bis_background:}{background:}g;
 # --- model slugs -> Claude Code model aliases --------------------------
 s{\bclaude-opus-5-5-(?:max|xhigh|high|medium|low)\b}{opus}g;
 s{\bclaude-fable-5-1-thinking-(?:max|xhigh|high|medium|low)\b}{fable}g;
-s{\bgpt-5\.6-sol-max\b}{opus}g;
+s{\bgpt-5\.6-sol-max\b}{gpt-5.6-sol}g;
 s{\bgrok-4\.7-(?:max|xhigh|high|medium|low)-fast\b}{sonnet}g;
 s{\bgrok-4\.6-fast\b}{sonnet}g;
 
@@ -117,3 +117,9 @@ s{each a Cursor cloud agent,}{each a background `Agent` in its own worktree,}g;
 s{One Cursor cloud agent per PR}{One background `Agent` per PR, in its own worktree,}g;
 s{with Cursor's `/loop` command}{with Claude Code's `/loop` skill}g;
 s{the background agent's status in the Cursor dashboard}{the background agent's last output}g;
+
+# --- upstream's GPT panel seat is a GPT seat again, through bin/panelist, instead of
+# --- a second opus: same model diversity upstream designed, and it does not count
+# --- against Claude plan limits. reflect's tooling reviewer needs files and MCP,
+# --- which a panelist seat does not have, so that one stays an Anthropic agent.
+s{\| `reflect tooling` \| `gpt-5\.6-sol` \|}{| `reflect tooling` | `opus` |}g;

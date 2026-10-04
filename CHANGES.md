@@ -34,6 +34,13 @@ entries are keyed by pull request. CI fails a pull request that changes anything
 - The plugin moves to `plugins/pstack-cc/`, so installs no longer copy the generator, tests or reference material.
 - `plugin.json` has no `version`, so every commit is an update. `0.1.0` had kept installs on their first copy.
 
+**Plan limits**
+- `hooks/budget.sh` (SessionStart) caps fan-out by budget (balanced: 3 per step and one Claude seat per panel; lean: 2) and defaults to balanced with no config.
+- `/pstack-cc:setup-pstack` offers max, balanced and lean presets with relative costs.
+- Upstream's GPT panel seat is a GPT seat again (via `panelist`) instead of a second Opus.
+- `pstack-cc:read-only` runs at `effort: high`.
+- `bin/pstack-usage` reports where plan usage went: by model, subagent type, effort and session.
+
 **Tooling**
 - New `own/` holds port-only files, guarded against upstream collisions.
 - Lint now checks cross-references between skills.

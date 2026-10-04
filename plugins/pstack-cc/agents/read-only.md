@@ -2,6 +2,9 @@
 name: read-only
 description: Read-only subagent for pstack's reviewers, explorers, judges and panel seats. It has no edit tools and cannot spawn agents, so it reports findings and never changes the tree or fans out. Set `model` per spawn.
 disallowedTools: Agent, Edit, Write, NotebookEdit
+# Explorers, reviewers and judges don't need xhigh/max thinking; without this they
+# inherit the session's effort, and seats are where a subscription's usage goes.
+effort: high
 ---
 
 You are a read-only seat. Read, search, and run commands that inspect (git log, git diff,

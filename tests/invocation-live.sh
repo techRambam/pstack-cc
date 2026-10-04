@@ -31,6 +31,7 @@ eq "agent registered as pstack-cc:comment-sicko" "$(field agents | grep -cx 'pst
 eq "agent registered as pstack-cc:read-only"     "$(field agents | grep -cx 'pstack-cc:read-only')" "1"
 eq "principles are out of the / menu"            "$(field slash_commands | grep -c 'pstack-cc:principle-')" "0"
 eq "routable skills are in the / menu"           "$(field slash_commands | grep -cx 'pstack-cc:how')" "1"
+eq "budget hook output reached the session"     "$(printf '%s' "$init" | grep -q 'pstack-cc usage budget: balanced' && echo yes || echo no)" "yes"
 eq "cloud hook output reached the session"       "$(printf '%s' "$init" | grep -q 'pstack-cc is running in a Claude Code cloud session' && echo yes || echo no)" "yes"
 
 got="$(timeout 180 claude -p 'Call the Skill tool exactly once with skill "pstack-cc:principle-prove-it-works". Then reply with only LOADED if the skill content was returned, or REFUSED if it was refused.' \

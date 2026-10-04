@@ -67,7 +67,7 @@ upstream budget change (`-max` → `-medium`) maps instead of leaking:
 | Upstream | Here |
 |---|---|
 | `claude-opus-5-5-{max,xhigh,high,medium,low}` | `opus` |
-| `gpt-5.6-sol-max` | `opus` |
+| `gpt-5.6-sol-max` | `gpt-5.6-sol`, a `panelist` seat (was `opus`; reflect's tooling reviewer, which needs files and MCP, stays `opus`) |
 | `grok-4.7-{…}-fast` | `sonnet` |
 | `claude-fable-5-1-thinking-*`, `grok-4.6-fast*` | `fable`, `sonnet` (pre-`e43c7ee`; kept so a return maps) |
 

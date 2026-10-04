@@ -49,15 +49,61 @@ from a retired role. Drop it. Otherwise start from the defaults in step 3.
 
 ### 2. Ask for a budget
 
-Ask the user which budget they want, with `AskUserQuestion`:
+On a subscription plan (Pro, Max), most usage goes to **subagents**: every panel seat,
+explorer, investigator and swarm worker is a fresh context that re-reads its files and thinks
+on its own. The budget sets two things: each role's model (this file), and the fan-out caps
+that pstack-cc's `budget.sh` SessionStart hook injects (it reads the `# budget:` line).
 
-- **max** — `opus` for judgment, prose and the hardest work.
-- **balanced** — `sonnet` for build roles, `opus` only for judgment and panels.
-- **cheap** — `sonnet` throughout, `haiku` for bulk fan-out, `opus` only for a final judge.
+Relative cost per token, Sonnet 5.5 = 1: **Fable 5.1 = 5, Opus 5.5 = 2, Sonnet 5.5 = 1,
+Haiku 4.5 = 0.5**. A `gpt-*`, `gemini-*` or `vendor:model` seat runs through `panelist` and
+costs **nothing** against Claude plan limits (it uses that vendor's quota instead).
+
+Ask the user which budget they want, with `AskUserQuestion`. Recommend **balanced** for a
+subscription plan:
+
+- **max**: upstream's full fan-out, `opus` on every build and judgment role. Fastest way
+  through a plan's limits; for API billing or a short, high-stakes run.
+- **balanced** (recommended): `opus` only where a judgment is made (synthesizers, the
+  explainer, the one Claude seat per panel); `sonnet` builds; panels are filled with
+  non-Claude seats; at most 3 subagents per step.
+- **lean**: `sonnet` for judgment, `haiku` for search and bulk work, no `opus` seat on panels,
+  at most 2 subagents per step. Noticeably weaker on hard design and review calls.
+
+| Role | max | balanced | lean |
+|---|---|---|---|
+| feature, refactoring / bug-fix / perf-issue / hillclimb | `opus` | `sonnet` | `sonnet` |
+| judgment and prose | `opus` | `opus` | `sonnet` |
+| hardest tasks | `opus` | `opus` | `opus` |
+| how explorer | `sonnet` | `sonnet` | `haiku` |
+| how explainer | `opus` | `opus` | `sonnet` |
+| why investigators | `sonnet` | `sonnet` | `haiku` |
+| why synthesizer | `opus` | `opus` | `sonnet` |
+| reflect tooling | `opus` | `sonnet` | `sonnet` |
+| reflect judgment, divergent, synthesizer | `opus` | `opus` | `sonnet` |
+| arena runners | `opus`, `opus`, `gpt-6-astra`, `gemini-3-flash-preview` | `opus`, `sonnet`, `gpt-6-astra` | `sonnet`, `gpt-6-astra` |
+| arena cross-judge pool | `opus`, `gpt-6-astra`, `gemini-3-flash-preview` | `gpt-6-astra`, `gemini-3-flash-preview`, `opus` | `gpt-6-astra`, `gemini-3-flash-preview` |
+| swarm workers | `sonnet` | `sonnet` | `haiku` |
+| architect runners | `opus`, `opus`, `gpt-6-astra`, `gemini-3-flash-preview` | `opus`, `gpt-6-astra`, `gemini-3-flash-preview` | `sonnet`, `gpt-6-astra`, `gemini-3-flash-preview` |
+| interrogate reviewers | `opus`, `opus`, `gpt-6-astra`, `gemini-3-flash-preview` | `opus`, `gpt-6-astra`, `gemini-3-flash-preview` | `sonnet`, `gpt-6-astra`, `gemini-3-flash-preview` |
+
+`panelist doctor` (see "Panels are cross-vendor again" above) says which non-Claude seats answer.
+Replace any that don't with another vendor that does; never with a second Claude seat, which is
+exactly the spend the budget avoids.
+
+Two settings outside this file matter as much:
+
+- **The main session's model and effort.** A role set to `inherit-parent` or `auto`, and any
+  spawn that omits `model`, runs on the main session's model. Keep the main session on Opus
+  (`/model`), not Fable, and at `/effort high` for routine work.
+- **Measure before tuning further.** `${CLAUDE_PLUGIN_ROOT}/bin/pstack-usage` reads Claude
+  Code's own transcripts and shows the share of usage by model, subagent type, effort and
+  session, plus what to change first.
 
 ### 3. Write the file
 
-Overwrite the whole file so re-runs stay idempotent. Shape:
+Overwrite the whole file so re-runs stay idempotent. Write the chosen budget's column from the
+table above. The `# budget:` line is required: `budget.sh` reads it to set the fan-out caps.
+Shape, for balanced:
 
 ```
 # pstack-cc model configuration. One line per role.
@@ -76,13 +122,13 @@ how explorer: sonnet
 how explainer: opus
 why investigators: sonnet
 why synthesizer: opus
-reflect tooling: opus
+reflect tooling: sonnet
 reflect judgment, divergent, synthesizer: opus
-arena runners: opus, gpt-6-astra, gemini-3-flash-preview, huggingface:Qwen/Qwen3-235B-A22B-Instruct-2507
-arena cross-judge pool: opus, gpt-6-astra, gemini-3-flash-preview, openrouter:deepseek/deepseek-v4-flash-0731:free
+arena runners: opus, sonnet, gpt-6-astra
+arena cross-judge pool: gpt-6-astra, gemini-3-flash-preview, opus
 swarm workers: sonnet
-architect runners: opus, gpt-6-astra, gemini-3-flash-preview, openrouter:deepseek/deepseek-v4-flash-0731:free
-interrogate reviewers: opus, gpt-6-astra, gemini-3-flash-preview, openrouter:deepseek/deepseek-v4-flash-0731:free
+architect runners: opus, gpt-6-astra, gemini-3-flash-preview
+interrogate reviewers: opus, gpt-6-astra, gemini-3-flash-preview
 ```
 
 Valid model values:
