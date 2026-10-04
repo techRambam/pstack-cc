@@ -137,10 +137,16 @@ modifier** and silently mangles the URL to `models/5-flashnerateContent`. Brace 
 
 ## 7. Cloud sessions
 
-A cloud session ignores plugins enabled in a repo's `.claude/settings.json` and in user
-settings. It loads a plugin from `CLAUDE_CODE_PLUGIN_DIRS` (`MEASURED:` `claude plugin list`
-reports `pstack-cc@inline … loaded` with all 50 skills, 2 agents and both hook events) or from
-server-managed settings. Install steps for both are in the README.
+`MEASURED` in real cloud sessions (2026-10-04). These do **not** load a plugin there:
+- repo `enabledPlugins`
+- a plugin on the claude.ai account (account skills sync, plugins don't)
+- a plugin under `.claude/skills/<name>/` ("workspace was not trusted")
+- `CLAUDE_CODE_PLUGIN_DIRS` in a repo's settings `env`
+
+What does load one is the environment: a setup script that clones the (public) repo to
+`/opt/pstack-cc`, plus `CLAUDE_CODE_PLUGIN_DIRS=/opt/pstack-cc/plugins/pstack-cc` as an
+environment variable. The startup event then lists `pstack-cc@inline` with every skill, the
+three agents and both SessionStart notes. Steps are in the README.
 
 What differs inside one, all `MEASURED:` in a cloud container:
 
