@@ -4,7 +4,10 @@ Newest first. The plugin has no version number (see README, "Updating an install
 entries are keyed by pull request. CI fails a pull request that changes anything under
 `plugins/` without adding a line here, so every install-visible change is recorded.
 
-## Unreleased: techRambam/pstack-cc#4
+## Unreleased
+- README: the cloud-session install route that actually works (environment setup script plus `CLAUDE_CODE_PLUGIN_DIRS`), with the four routes that were tested and failed.
+
+## techRambam/pstack-cc#4 (2026-10-04)
 
 **Cloud sessions**
 - `hooks/cloud-session.sh` (SessionStart, cloud only) tells the model what differs from a laptop and copies the repo's `.claude/pstack-models.md` home.

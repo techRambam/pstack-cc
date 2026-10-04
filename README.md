@@ -89,32 +89,44 @@ claude plugin marketplace update pstack-cc && claude plugin update pstack-cc@pst
 ## Cloud sessions
 
 A cloud session (claude.ai/code, the desktop or mobile app's cloud mode, `claude --cloud`)
-starts a fresh container from a fresh clone. It **ignores** plugins a repository enables in
-`.claude/settings.json` and plugins in your local user settings
-([docs](https://code.claude.com/docs/en/cloud-environments#what-carries-over-from-your-setup)),
-so the `Install` steps above do nothing there. Two routes work:
+starts a fresh container from a fresh clone, so none of the usual install routes reach it.
+Each of these was tested in a real cloud session on 2026-10-04, and each failed:
 
-**Any plan: load the plugin from a directory.** In the cloud environment's settings at
-claude.ai/code, add a setup script that clones the plugin, and an environment variable that
-points Claude Code at it:
+| Route | What happened |
+|---|---|
+| `enabledPlugins` / `extraKnownMarketplaces` in a repo's `.claude/settings.json` | Ignored by design ([docs](https://code.claude.com/docs/en/cloud-environments#what-carries-over-from-your-setup)). |
+| Plugin added to your claude.ai account (**Customize → Plugins**) | Not loaded. Only built-in plugins appear, though account *skills* do sync. |
+| Plugin committed under a repo's `.claude/skills/<name>/` | Skipped: "workspace was not trusted", and cloud sessions never show the trust dialog. |
+| `CLAUDE_CODE_PLUGIN_DIRS` in a repo's `.claude/settings.json` `env` | Not applied. Plugins load before project settings. |
 
-```bash
-git clone --depth 1 https://github.com/techRambam/pstack-cc /opt/pstack-cc
-```
+**What works, on any plan: the cloud environment.** Edit the environment at claude.ai/code
+(one time; it then covers every repo you open in that environment):
 
-```text
-CLAUDE_CODE_PLUGIN_DIRS=/opt/pstack-cc/plugins/pstack-cc
-```
+- **Setup script**: runs before Claude Code starts, and puts the plugin on disk:
 
-The plugin then loads as `pstack-cc@inline`, with its skills, agents, hooks and `bin/`. The
-setup script runs when the environment's cache is built, so the clone is a snapshot. It
-refreshes when you edit the script or the cache expires after about seven days. This
-repository is private, so the clone needs read access from the environment. If it fails,
-use the route below or make the repository public; upstream is MIT.
+  ```bash
+  #!/bin/bash
+  git clone --depth 1 https://github.com/techRambam/pstack-cc /opt/pstack-cc 2>/dev/null \
+    || git -C /opt/pstack-cc pull --ff-only
+  ```
 
-**Team and Enterprise: server-managed settings.** An Owner adds this at
-**Organization settings > Claude Code > Managed settings**. Cloud sessions fetch it before
-they install plugins:
+- **Environment variable**: tells Claude Code to load it:
+
+  ```text
+  CLAUDE_CODE_PLUGIN_DIRS=/opt/pstack-cc/plugins/pstack-cc
+  ```
+
+`MEASURED:` a new session then reports `pstack-cc@inline` with all skills, the three agents,
+and the budget and cloud notes from its SessionStart hooks. A wrong path shows up in the
+session's startup event as `Path not found: <path>`.
+
+The clone needs no credentials because this repository is public. The setup script runs when
+the environment's cache is built, so the plugin is a snapshot: it refreshes when you edit the
+script or the cache expires after about seven days.
+
+**Team and Enterprise: server-managed settings** are the other route. An Owner adds this at
+**Organization settings > Claude Code > Managed settings**, and cloud sessions fetch it before
+they install plugins (documented; not tested here, since this account is on a Max plan):
 
 ```json
 {
