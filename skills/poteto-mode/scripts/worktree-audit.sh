@@ -24,7 +24,7 @@ gh pr list --author "@me" --state all --limit 1000 \
 
 # Transcripts dir: ~/.claude/projects/<slugified-repo-path>/agent-transcripts.
 slug=$(printf '%s' "$main_wt" | sed 's#^/##; s#/#-#g')
-transcripts="/.claude/projects/"
+transcripts="$HOME/.claude/projects/$slug"
 now=$(date +%s)
 
 printf "SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tBUCKET\tWORKTREE\n"

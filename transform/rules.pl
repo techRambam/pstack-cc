@@ -18,10 +18,10 @@ s{\bthe Task\b}{the Agent}g;
 s{\bis_background:}{background:}g;
 
 # --- model slugs -> Claude Code model aliases --------------------------
-s{\bclaude-opus-5-thinking-xhigh\b}{opus}g;
-s{\bclaude-fable-5-1-thinking-max\b}{fable}g;
+s{\bclaude-opus-5-5-(?:max|xhigh|high|medium|low)\b}{opus}g;
+s{\bclaude-fable-5-1-thinking-(?:max|xhigh|high|medium|low)\b}{fable}g;
 s{\bgpt-5\.6-sol-max\b}{opus}g;
-s{\bgrok-4\.6-fast-xhigh\b}{sonnet}g;
+s{\bgrok-4\.7-(?:max|xhigh|high|medium|low)-fast\b}{sonnet}g;
 s{\bgrok-4\.6-fast\b}{sonnet}g;
 
 # --- merge policy: the house rule is a merge commit, never a squash ----
@@ -48,7 +48,7 @@ s{~/\.cursor/rules/pstack-models\.mdc}{~/.claude/pstack-models.md}g;
 
 # --- remaining Cursor paths --------------------------------------------
 s{~/\.cursor/plugins/}{~/.claude/plugins/}g;
-s{\$HOME/\.cursor/projects/\$slug/agent-transcripts}{$HOME/.claude/projects/$slug}g;
+s{\$HOME/\.cursor/projects/\$slug/agent-transcripts}{\$HOME/.claude/projects/\$slug}g;
 s{\.cursor/worktrees/}{.claude/worktrees/}g;
 s{~/Library/Application Support/Cursor}{~/Library/Application Support/Claude}g;
 
@@ -73,3 +73,10 @@ s{"CURSOR_AUTOMATION_ID: }{"AUTOMATION_ID: }g;
 # --- a remote API, so it takes the 300s floor rather than upstream's 60s.
 s{\.option\(\s*"--interval <seconds>",\s*"([^"]*)",\s*"60"}{.option("--interval <seconds>", "$1", "300"}g;
 s{\.option\("--interval <seconds>", "poll interval", positiveNumber, 60\)}{.option("--interval <seconds>", "poll interval", positiveNumber, 300)}g;
+# --- and the parseArgs defaults test asserts that same default, or `bun test` fails.
+s{^(\s+)interval: 60,$}{${1}interval: 300,};
+# --- multi-phase-plan names check-plan by its path in UPSTREAM's monorepo, which exists
+# --- nowhere here. Same base as every other poteto-mode script: the skill directory.
+s{node pstack/skills/poteto-mode/scripts/check-plan\.mjs}{node scripts/check-plan.mjs}g;
+# --- since #422 upstream names the model rule bare, without its ~/.cursor/rules/ path.
+s{the `pstack-models\.mdc` rule}{`~/.claude/pstack-models.md`}g;

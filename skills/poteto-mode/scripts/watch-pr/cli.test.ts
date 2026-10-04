@@ -43,7 +43,7 @@ describe("parseArgs", () => {
       statusOnly: false,
       pretty: false,
       polling: {
-        interval: 60,
+        interval: 300,
         sweepInterval: 300,
         timeout: 0,
         maxQueryErrors: 5,

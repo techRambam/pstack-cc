@@ -3,4 +3,5 @@
 # A mismatch means upstream rewrote a file you override -- read their version
 # before re-accepting, or the override silently discards their change.
 3624c8ef16cf2e48deb2a4049e72c6962a9431c8d6c6af90e7bd7ea0375224ec  skills/make-bot-ui/SKILL.md
-2399a5670c6408e92a996299c9de9f22736997cb7e835c694309e7c6fc8c39bf  skills/setup-pstack/SKILL.md
+d955603be6cc0e8b8ffcec722f635192b2261410b1f2929abea94480e47eb5d4  skills/poteto-mode/scripts/watch-pr/watch-pr
+125dd0c8f588782cfb271efae8f97a0719e43e79f56b3495c095f460bcee6389  skills/setup-pstack/SKILL.md

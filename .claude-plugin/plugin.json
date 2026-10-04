@@ -1,7 +1,6 @@
 {
   "name": "pstack-cc",
-  "description": "pstack (Lauren Tan / cursor-plugins) adapted for Claude Code: 47 skills, 23 playbooks, 23 principles, with Cursor-only mechanisms replaced by Claude Code equivalents.",
-  "version": "0.1.0",
+  "description": "pstack (Lauren Tan / cursor-plugins) adapted for Claude Code: 50 skills, 23 playbooks, 24 principles, with Cursor-only mechanisms replaced by Claude Code equivalents.",
   "author": {
     "name": "Adapted for Claude Code from pstack by Lauren Tan"
   },

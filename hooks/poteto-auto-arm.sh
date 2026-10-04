@@ -9,13 +9,19 @@
 # This hook writes the marker at session start instead, so poteto-mode is
 # pinned from the first turn.
 #
-# It is OFF unless <config>/pstack-cc/always-on exists, because pinning a mode
-# for every session in every repo is a choice the plugin should not make on
-# anyone's behalf.
+# It is OFF unless <config>/pstack-cc/always-on exists or PSTACK_CC_ALWAYS_ON=1,
+# because pinning a mode for every session in every repo is a choice the plugin
+# should not make on anyone's behalf.
 #
 #   touch ~/.claude/pstack-cc/always-on   arm every future session
 #   rm ~/.claude/pstack-cc/always-on      stop arming them
+#   PSTACK_CC_ALWAYS_ON=1                 the same, as an environment variable
 #   /poteto-off                           unpin the current session only
+#
+# The variable exists for cloud sessions, whose home directory is created fresh
+# for every session, so a touched file there never reaches the next one. Set it
+# in the cloud environment's settings, or in a repo's .claude/settings.json
+# "env" block to arm every session in that repo.
 #
 # ONLY source=startup arms. SessionStart also fires on resume, clear, compact
 # and fork, all of which happen inside a session that already has its marker,
@@ -30,7 +36,7 @@
 set -uo pipefail
 
 CFG="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/pstack-cc"
-[ -f "$CFG/always-on" ] || exit 0
+[ -f "$CFG/always-on" ] || [ "${PSTACK_CC_ALWAYS_ON:-}" = 1 ] || exit 0
 
 read -r -d '' PY <<'PYEOF' || true
 import json,sys

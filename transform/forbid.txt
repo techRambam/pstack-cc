@@ -4,10 +4,11 @@ CURSOR_[A-Z_]+
 cursor-team-kit
 pstack-models\.mdc
 api2\.cursor\.sh
-grok-4\.6
+grok-4\.[67]
 gpt-5\.6-[a-z]+-max
 gpt-6-astra-[a-z]+
 claude-opus-5-thinking
+claude-opus-5-5-[a-z]+
 claude-fable-5-1-thinking
 generalPurpose
 --squash

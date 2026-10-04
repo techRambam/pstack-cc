@@ -10,7 +10,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPSTREAM_REPO="https://github.com/cursor/plugins.git"
-UPSTREAM_REF="032be146865d973682535de75f2287da438550bf"
+UPSTREAM_REF="e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a"
 SRC="$ROOT/upstream/pstack"
 
 ACCEPT=""
@@ -112,4 +112,6 @@ python3 "$ROOT/tests/lint-skills.py" || die "lint failed"
 log "testing the stickiness hook"
 bash "$ROOT/tests/poteto-mode-hook.sh" >/dev/null || die "hook tests failed"
 bash "$ROOT/tests/poteto-auto-arm.sh" >/dev/null || die "auto-arm tests failed"
+log "testing cloud-session support"
+bash "$ROOT/tests/cloud-session.sh" >/dev/null || die "cloud-session tests failed"
 log "clean"
