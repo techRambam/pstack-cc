@@ -22,8 +22,8 @@ prs=$(mktemp)
 gh pr list --author "@me" --state all --limit 1000 \
 	--json number,state,headRefName 2>/dev/null > "$prs" || echo "[]" > "$prs"
 
-# Transcripts dir: ~/.claude/projects/<slugified-repo-path>/agent-transcripts.
-slug=$(printf '%s' "$main_wt" | sed 's#^/##; s#/#-#g')
+# Transcripts dir: ~/.claude/projects/<slug>, every non-alphanumeric byte -> "-".
+slug=$(printf '%s' "$main_wt" | sed 's#[^A-Za-z0-9]#-#g')
 transcripts="$HOME/.claude/projects/$slug"
 now=$(date +%s)
 

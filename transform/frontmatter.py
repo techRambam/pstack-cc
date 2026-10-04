@@ -2,7 +2,8 @@
 """Normalise pstack frontmatter for Claude Code.
 
 Claude Code rejects unknown keys in a PLUGIN skill's frontmatter, and requires
-agent/skill names to be lowercase-and-hyphens. Cursor allows both.
+agent/skill names to be lowercase-and-hyphens. Cursor allows both. One key means
+something stricter here than upstream intends, so it goes too (see DROP).
 
 Side effect: poteto-mode's `reminder:` is extracted to hooks/reminder.txt so the
 stickiness hook injects upstream's own wording and picks up changes on re-import.
@@ -10,6 +11,13 @@ stickiness hook injects upstream's own wording and picks up changes on re-import
 import re, sys, pathlib
 
 DROP = {"mode", "icon", "color", "reminder"}          # Cursor-only skill keys
+# Same key, different meaning. In Claude Code it does not just keep a skill out of
+# automatic routing: the Skill tool REFUSES the call, so poteto-mode could not route
+# to /how, /why, /arena or a principle skill, and the pinned reminder ("apply
+# /poteto-mode") could not be acted on. Upstream's skills invoke one another, so the
+# key goes. Their descriptions are explicit ("Use for /how"), which keeps them from
+# triggering on unrelated requests.
+DROP |= {"disable-model-invocation"}
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 def slug(v):

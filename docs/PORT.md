@@ -23,11 +23,23 @@ Dropped from `poteto-mode` (Cursor-only, no Claude Code meaning): `mode`, `icon`
 the stickiness hook, so it tracks upstream.
 
 Names slugged to lowercase-hyphen: `Poteto Mode` → `poteto-mode`, `Make Bot UI` →
-`make-bot-ui`, `Comment Sicko` → `comment-sicko` (and the reference at
-`no-comments/SKILL.md`). `is_background:` → `background:`.
+`make-bot-ui`, `Comment Sicko` → `comment-sicko`. `is_background:` → `background:`.
+Plugin agents are dispatched by their namespaced name, `pstack-cc:poteto-agent` and
+`pstack-cc:comment-sicko`. An earlier version of this record claimed the `no-comments`
+reference was slugged. It was not: it still spawned `subagent_type: "Comment Sicko"`, which
+resolves to nothing. The forbid gate now rejects the bare and display forms.
 
-Kept unchanged: `disable-model-invocation` (46 skills) and `paths` — both are supported here
-with the same meaning. This is why the pack is slash-only and cannot degrade skill routing.
+**`disable-model-invocation` is dropped**, except on `make-bot-ui`. An earlier version kept it
+on 49 skills on the theory that it only kept them out of automatic routing. In Claude Code it
+does more than that: when Claude calls a skill that carries it, the Skill tool **refuses** the
+call ([docs](https://code.claude.com/docs/en/skills)). Upstream's skills invoke one another:
+poteto-mode routes to `how`, `why`, `arena` and the principle skills, and the pinned reminder
+says "apply /poteto-mode". Every one of those calls was being refused. The descriptions are
+explicit ("Use for /how"), so the skills don't trigger on unrelated requests. `make-bot-ui`
+keeps the flag because it has side effects and nothing routes to it. `tests/lint-skills.py`
+fails on the key anywhere else.
+
+Kept unchanged: `paths`, which means the same thing here.
 
 ## 3. Mechanisms with no Claude Code equivalent — what replaced them
 
@@ -39,9 +51,10 @@ with the same meaning. This is why the pack is slash-only and cannot degrade ski
 | Cursor built-in `create-skill` | `anthropic-skills:skill-creator`. |
 | `cursor-team-kit`'s `control-ui` / `control-cli` | The built-in browser tools (`mcp__Claude_Browser__*`) and Bash/tmux. |
 | `/deslop` (`cursor-team-kit`) | `/pstack-cc:unslop`, which is the same job and ships here. |
-| `~/.cursor/projects/<slug>/agent-transcripts/` | `~/.claude/projects/<slug>/`. |
+| `~/.cursor/projects/<slug>/agent-transcripts/`, "named in the system prompt" | `~/.claude/projects/<slug>/<session-id>.jsonl`, with subagents under `<session-id>/subagents/`. `MEASURED:` the slug keeps its leading dash (`-home-user-pstack-cc`), and no system prompt names the directory, so the skills now say how to build it, and SKILL.md files name `${CLAUDE_SESSION_ID}.jsonl`. |
 | `~/.cursor/plugins/` | `~/.claude/plugins/`. |
-| Cursor cloud agents (`environment: "cloud"`) | Left as prose. Nearest equivalents are an `Agent` with `isolation: "worktree"` and a cloud session; neither is a drop-in, so the playbooks that assume one VM per PR (`orchestrate`, both `autopilot-*`) are **the least faithful part of this port**. |
+| Cursor cloud agents (`environment: "cloud"`, `cloud_base_branch`, the Cursor dashboard) | A background `Agent` with `isolation: "worktree"`. This is not a drop-in replacement for one VM per PR, so `orchestrate` and both `autopilot-*` playbooks are still **the least faithful part of this port**. |
+| `readonly: false` ("agent mode", so MCP stays available) | Dropped. Claude Code subagents get MCP tools without a flag. |
 
 ## 4. Model slugs
 

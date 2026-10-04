@@ -1,7 +1,6 @@
 ---
 name: arena
 description: "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. Use for /arena, 'arena this', 'throw it in the arena', or when one attempt at a non-trivial artifact would lock in the wrong shape."
-disable-model-invocation: true
 ---
 
 # Arena
@@ -97,7 +96,8 @@ pass the same `--schema` file to every seat. `panelist` converts it per vendor
 
 `panelist doctor` lists which models answer right now. Reachable today: OpenAI
 via the org `codex` CLI (`gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-luna`,
-`gpt-5.6-terra`, `gpt-5.5`) and Google's free tier (`gemini-3-flash-preview`,
+`gpt-5.6-terra`, `gpt-5.5`), or via `OPENAI_API_KEY` where `codex` is absent (a
+cloud session), and Google's free tier (`gemini-3-flash-preview`,
 `gemini-3.5-flash`, `gemini-2.5-flash`, `gemini-3.1-flash-lite`). Gemini **pro**
 returns HTTP 429 — free tier is flash-class only, so weight a Gemini seat
 accordingly rather than treating it as a peer of an Opus seat.
@@ -112,6 +112,11 @@ three-vendor rather than four, and carry on.
 Seats are read-only by construction: `panelist` runs `codex exec -s read-only`
 and Gemini has no tool access at all. A panelist reviews and reports; it never
 edits the tree.
+
+Run each seat's Bash call with `run_in_background: true` when it may take more than a few
+minutes. A foreground call is killed at 600s, and `panelist`'s own default timeout (540s)
+sits just under that so a slow seat reports "timed out" instead of vanishing. Pass `-t` for
+longer seats.
 
 If a seat errors, say so in the verdict table and carry on with the seats you
 have. A panel of three that names its missing fourth is honest; silently

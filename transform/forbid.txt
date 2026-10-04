@@ -13,3 +13,12 @@ claude-fable-5-1-thinking
 generalPurpose
 --squash
 is_background
+Cursor('s)? (built-in|cloud agent|dashboard|environment)
+`/loop` command
+agent-transcripts
+environment: \"cloud\"
+cloud_base_branch
+readonly: false
+`Task`
+subagent_type: \"(Comment Sicko|poteto-agent|comment-sicko)\"
+mcps/

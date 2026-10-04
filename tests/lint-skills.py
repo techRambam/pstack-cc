@@ -8,11 +8,15 @@ passed validation). This is the check that actually catches a bad port.
 import re, sys, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SKILL_OK = {"name", "description", "disable-model-invocation", "allowed-tools",
+SKILL_OK = {"name", "description", "allowed-tools",
             "license", "paths", "model", "version"}
 AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
             "background", "isolation", "permissionMode", "maxTurns", "skills",
             "effort", "memory", "omitClaudeMd"}
+# Slash-only on purpose: side effects (it wires a UI that triggers agent runs and holds
+# a server-side secret) and no pstack skill routes to it. Every other skill must stay
+# invocable by Claude, or the skills that route to it are refused.
+SLASH_ONLY_OK = {"make-bot-ui"}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 def fm(p):
@@ -39,7 +43,14 @@ for p in skills:
     d = f.get("description", "")
     if not d: errs.append(f"{rel}: missing description")
     elif len(d) > 1536: errs.append(f"{rel}: description {len(d)} chars > 1536")
-    for k in set(f) - SKILL_OK: errs.append(f"{rel}: unsupported key {k!r}")
+    for k in set(f) - SKILL_OK:
+        if k == "disable-model-invocation" and name in SLASH_ONLY_OK:
+            continue
+        if k == "disable-model-invocation":
+            errs.append(f"{rel}: disable-model-invocation makes the Skill tool refuse the call, "
+                        f"so other pstack skills cannot route here (transform/frontmatter.py)")
+        else:
+            errs.append(f"{rel}: unsupported key {k!r}")
 
 agents = sorted((ROOT / "agents").glob("*.md"))
 for p in agents:

@@ -60,8 +60,11 @@ claude plugin install pstack-cc@pstack-cc
 Restart Claude Code, then `/pstack-cc:setup-pstack` to write your model-role config.
 
 Everything is namespaced (`/pstack-cc:how`, `/pstack-cc:tdd`), so nothing shadows a built-in
-or another pack. 49 of 50 skills ship `disable-model-invocation: true` exactly as upstream
-does, so they are slash-only and cannot compete with your other skills for routing.
+or another pack. Upstream marks its skills `disable-model-invocation: true`. Claude Code reads
+that flag more strictly than upstream intends: it refuses Claude's own Skill tool call, so
+poteto-mode could not route to `/how`, `/why` or a principle skill. The flag is therefore
+dropped from every skill except `make-bot-ui`. The descriptions are explicit ("Use for /how"),
+so the skills stay out of unrelated requests.
 
 ### Updating an install
 

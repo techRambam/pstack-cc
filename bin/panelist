@@ -393,7 +393,10 @@ r.add_argument("-p", "--prompt", required=True, help="prompt file, or - for stdi
 r.add_argument("--schema", help="JSON Schema file for a structured answer")
 r.add_argument("--out", help="also write the answer here")
 r.add_argument("-C", "--cwd", help="working root (codex only)")
-r.add_argument("-t", "--timeout", type=int, default=600)
+# 540, not 600: a foreground Bash call dies at 600s, which killed panelist before its own
+# timeout could report a clean "timed out" -- the seat just vanished. Longer seats run
+# with Bash run_in_background and pass -t explicitly.
+r.add_argument("-t", "--timeout", type=int, default=540)
 r.set_defaults(func=cmd_run)
 
 def _doctor_exit():

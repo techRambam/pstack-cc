@@ -1,7 +1,6 @@
 ---
 name: swarm
 description: "Fan out N parallel workers, drain them, and return one report. Use for /swarm, 'swarm this', or parallel coverage, races, gauntlets, and exploration."
-disable-model-invocation: true
 ---
 
 # Swarm
@@ -27,9 +26,9 @@ Open a todolist with one entry per phase before launching anything.
 
 ## Phase B: Fan out
 
-Spawn all N workers in one message with `subagent_type: general-purpose`, `environment: "cloud"`, `run_in_background: true`, and the step 4 model, left unset for `auto` or `inherit-parent`. Use `environment: "local"` only when the worker needs access to something on the user's computer.
+Spawn all N workers in one message with `subagent_type: general-purpose`, `isolation: "worktree"`, `run_in_background: true`, and the step 4 model, left unset for `auto` or `inherit-parent`. Use `environment: "local"` only when the worker needs access to something on the user's computer.
 
-When a worker must start from a non-default pushed branch, pass `cloud_base_branch`.
+When a worker must start from a non-default pushed branch, name the branch in its brief so it checks that branch out first.
 
 Every brief stands alone. Include the goal, scope, exact slice or race arm, how to verify, and what to report. Reports use `PASS`, `ISSUES`, or `BLOCKED` with evidence. A worker that can prove a defect reports `ISSUES` and lists every issue it can prove, not only the first.
 
@@ -72,7 +71,8 @@ pass the same `--schema` file to every seat. `panelist` converts it per vendor
 
 `panelist doctor` lists which models answer right now. Reachable today: OpenAI
 via the org `codex` CLI (`gpt-6-astra`, `gpt-5.6-sol`, `gpt-5.6-luna`,
-`gpt-5.6-terra`, `gpt-5.5`) and Google's free tier (`gemini-3-flash-preview`,
+`gpt-5.6-terra`, `gpt-5.5`), or via `OPENAI_API_KEY` where `codex` is absent (a
+cloud session), and Google's free tier (`gemini-3-flash-preview`,
 `gemini-3.5-flash`, `gemini-2.5-flash`, `gemini-3.1-flash-lite`). Gemini **pro**
 returns HTTP 429 — free tier is flash-class only, so weight a Gemini seat
 accordingly rather than treating it as a peer of an Opus seat.
@@ -87,6 +87,11 @@ three-vendor rather than four, and carry on.
 Seats are read-only by construction: `panelist` runs `codex exec -s read-only`
 and Gemini has no tool access at all. A panelist reviews and reports; it never
 edits the tree.
+
+Run each seat's Bash call with `run_in_background: true` when it may take more than a few
+minutes. A foreground call is killed at 600s, and `panelist`'s own default timeout (540s)
+sits just under that so a slow seat reports "timed out" instead of vanishing. Pass `-t` for
+longer seats.
 
 If a seat errors, say so in the verdict table and carry on with the seats you
 have. A panel of three that names its missing fourth is honest; silently
