@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "pstack-cc",
-      "source": "./",
+      "source": "./plugins/pstack-cc",
       "description": "pstack's skills, playbooks and principles with Cursor-only mechanisms ported to Claude Code.",
       "category": "engineering",
       "keywords": ["pstack", "poteto-mode", "workflow", "principles", "verification"]

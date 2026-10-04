@@ -2,8 +2,8 @@
 # Functional test for hooks/poteto-mode.sh. Runs the real hook against real
 # stdin payloads and asserts on what it injects.
 set -uo pipefail
-HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hooks/poteto-mode.sh"
-export CLAUDE_CONFIG_DIR="$(mktemp -d)"
+HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/plugins/pstack-cc/hooks/poteto-mode.sh"
+CLAUDE_CONFIG_DIR="$(mktemp -d)"; export CLAUDE_CONFIG_DIR
 SID="test-session-$$"
 pass=0; fail=0
 

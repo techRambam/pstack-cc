@@ -22,3 +22,5 @@ readonly: false
 `Task`
 subagent_type: \"(Comment Sicko|poteto-agent|comment-sicko)\"
 mcps/
+`readonly`: `(true|false)`
+readonly judge

@@ -4,9 +4,9 @@
 # produced, so the two are asserted as one chain rather than in isolation.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ARM="$ROOT/hooks/poteto-auto-arm.sh"
-PIN="$ROOT/hooks/poteto-mode.sh"
-export CLAUDE_CONFIG_DIR="$(mktemp -d)"
+ARM="$ROOT/plugins/pstack-cc/hooks/poteto-auto-arm.sh"
+PIN="$ROOT/plugins/pstack-cc/hooks/poteto-mode.sh"
+CLAUDE_CONFIG_DIR="$(mktemp -d)"; export CLAUDE_CONFIG_DIR
 CFG="$CLAUDE_CONFIG_DIR/pstack-cc"
 SID="test-session-$$"
 pass=0; fail=0

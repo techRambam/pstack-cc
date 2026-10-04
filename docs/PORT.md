@@ -11,6 +11,9 @@ generated output.
 | `.cursor-plugin/plugin.json` | `.claude-plugin/plugin.json` + `marketplace.json` | The upstream repo has **no** `.claude-plugin/` and no `marketplace.json`, so there was nothing to install. |
 | `displayName`, `logo`, `category`, `tags`, `skills`, `agents` keys | dropped | `MEASURED:` not present in any real Claude Code `plugin.json` on this machine; `skills/` and `agents/` are auto-discovered. `category`/`tags` are marketplace-entry keys and moved there. |
 | — | `hooks/hooks.json` | `MEASURED:` auto-discovered, not referenced from `plugin.json` (same as superpowers 6.3.0). |
+| plugin at the repo root (`source: "./"`) | `plugins/pstack-cc/` | An install copies the plugin directory, and at the root that meant `transform/`, `tests/`, `docs/` and `reference/` (images included) went into every cache. `MEASURED:` a marketplace install from the new layout contains only `LICENSE`, `agents`, `bin`, `hooks`, `skills`. |
+| `"version": "0.1.0"` | no `version` | `MEASURED:` the install reports `Version: 7ed20aaed090`, the commit SHA, so every push is an update. A changelog (`CHANGES.md`, enforced in CI) replaces the version as the record. |
+| — | `own/agents/read-only.md` | Cursor's `readonly: true` spawn flag has no Claude Code parameter; the agent (no Edit/Write/NotebookEdit/Agent) is the equivalent. `transform/readonly.py` rewrites the five spawn specs, failing on any count mismatch. |
 
 **`claude plugin validate` does not check SKILL.md.** `MEASURED:` reintroducing `mode`,
 `icon`, `color` and `reminder` on a skill still passed validation. `tests/lint-skills.py`

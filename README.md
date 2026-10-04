@@ -10,16 +10,21 @@ plugin, regenerated for Claude Code.
 
 ## Not a fork — a generator
 
-`skills/` and `agents/` are **generated output. Never hand-edit them.** They are produced by
-`./import.sh` from a pinned upstream ref, through:
+The plugin is `plugins/pstack-cc/`. That is all an install copies; the generator, tests and
+reference material around it stay in the repo. Its `skills/` and `agents/` are **generated
+output. Never hand-edit them.** They are produced by `./import.sh` from a pinned upstream ref,
+through:
 
 | Piece | Job |
 |---|---|
 | `transform/rules.pl` | deterministic substitutions (paths, tool names, model slugs, merge policy) |
-| `transform/frontmatter.py` | drops Cursor-only keys, slugs names, extracts the poteto-mode reminder |
+| `transform/frontmatter.py` | drops Cursor-only keys, slugs names, hides principles from `/`, preloads poteto-mode into `poteto-agent`, extracts the reminder |
+| `transform/readonly.py` | maps Cursor's `readonly` spawn flag onto the `pstack-cc:read-only` agent |
 | `overlay/` | whole-file replacements for what a regex cannot fix |
+| `own/` | files this port adds that upstream never had (the `read-only` agent); fails if upstream later ships the same path |
 | `transform/forbid.txt` | patterns that must **not** survive — a hit fails the build |
-| `tests/` | a frontmatter linter and functional tests for the hooks and cloud-session support |
+| `tests/` | a frontmatter and cross-reference linter, and functional tests for the hooks and cloud-session support |
+| `CHANGES.md` | what each update brought; CI fails a plugin change that adds no entry |
 
 To update: bump `UPSTREAM_REF` in `import.sh`, run it, read the diff.
 
@@ -44,7 +49,7 @@ working model, so it can be used as a check — an unfunded account is reported 
 does not count as a failure.
 
 ```bash
-./bin/panelist doctor
+./plugins/pstack-cc/bin/panelist doctor
 ```
 
 ## Install
@@ -64,7 +69,8 @@ or another pack. Upstream marks its skills `disable-model-invocation: true`. Cla
 that flag more strictly than upstream intends: it refuses Claude's own Skill tool call, so
 poteto-mode could not route to `/how`, `/why` or a principle skill. The flag is therefore
 dropped from every skill except `make-bot-ui`. The descriptions are explicit ("Use for /how"),
-so the skills stay out of unrelated requests.
+so the skills stay out of unrelated requests. The 24 `principle-*` skills are
+`user-invocable: false` instead: other skills route to them, but they stay out of your `/` menu.
 
 ### Updating an install
 
@@ -97,7 +103,7 @@ git clone --depth 1 https://github.com/techRambam/pstack-cc /opt/pstack-cc
 ```
 
 ```text
-CLAUDE_CODE_PLUGIN_DIRS=/opt/pstack-cc
+CLAUDE_CODE_PLUGIN_DIRS=/opt/pstack-cc/plugins/pstack-cc
 ```
 
 The plugin then loads as `pstack-cc@inline`, with its skills, agents, hooks and `bin/`. The
@@ -119,7 +125,7 @@ they install plugins:
 }
 ```
 
-Once loaded, `hooks/cloud-session.sh` (a `SessionStart` hook that only speaks when
+Once loaded, `plugins/pstack-cc/hooks/cloud-session.sh` (a `SessionStart` hook that only speaks when
 `CLAUDE_CODE_REMOTE=true`) tells the model what differs from a laptop, so the fifty generated
 skills stay identical to upstream instead of forking for the cloud:
 
@@ -173,7 +179,7 @@ Upstream's `arena`, `interrogate`, `swarm` and `architect` draw their adversaria
 reaches Anthropic models only, so `bin/panelist` supplies the other seats:
 
 ```bash
-./bin/panelist doctor
+./plugins/pstack-cc/bin/panelist doctor
 ```
 
 | Vendor | Route | Models |

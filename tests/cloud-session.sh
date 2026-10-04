@@ -4,7 +4,7 @@
 # guard, and bin/panelist's environment keys. Offline: nothing here touches the
 # network.
 set -uo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/plugins/pstack-cc"
 HOOK="$ROOT/hooks/cloud-session.sh"
 ARM="$ROOT/hooks/poteto-auto-arm.sh"
 pass=0; fail=0
