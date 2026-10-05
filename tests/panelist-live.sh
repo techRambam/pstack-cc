@@ -5,7 +5,7 @@
 #   bash tests/panelist-live.sh
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/plugins/pstack-cc"
-T="$(mktemp -d)"; pass=0; fail=0
+T="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; pass=0; fail=0
 
 cat > "$T/schema.json" <<'EOF'
 {"$schema":"http://json-schema.org/draft-07/schema#","type":"object",

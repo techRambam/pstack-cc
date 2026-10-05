@@ -1,6 +1,7 @@
 # Port record — pstack (Cursor) → pstack-cc (Claude Code)
 
 Upstream: `cursor/plugins` @ `e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a`, `pstack/` only.
+Second upstream, Matt Pocock's skills: section 9.
 Every decision below is implemented in `transform/` or `overlay/`, never by hand-editing
 generated output.
 
@@ -32,7 +33,7 @@ Plugin agents are dispatched by their namespaced name, `pstack-cc:poteto-agent` 
 reference was slugged. It was not: it still spawned `subagent_type: "Comment Sicko"`, which
 resolves to nothing. The forbid gate now rejects the bare and display forms.
 
-**`disable-model-invocation` is dropped**, except on `make-bot-ui`. An earlier version kept it
+**`disable-model-invocation` is dropped**, except on `make-bot-ui` and Matt Pocock's unrouted extras (section 9). An earlier version kept it
 on 49 skills on the theory that it only kept them out of automatic routing. In Claude Code it
 does more than that: when Claude calls a skill that carries it, the Skill tool **refuses** the
 call ([docs](https://code.claude.com/docs/en/skills)). Upstream's skills invoke one another:
@@ -159,7 +160,7 @@ What differs inside one, all `MEASURED:` in a cloud container:
 | No desktop browser pane; Chromium at `/opt/pw-browsers` | `mcp__Claude_Browser__*` references dead | the hook names Playwright |
 
 The skills themselves are **not** rewritten for the cloud. One `SessionStart` note costs a few
-hundred tokens once per session and keeps fifty generated files identical to upstream; forking
+hundred tokens once per session and keeps the generated files identical to upstream; forking
 them would turn every upstream sync into a merge. `tests/cloud-session.sh` covers the hook,
 the auto-arm variable, the `watch-pr` guard and `panelist`'s key lookup, offline.
 
@@ -175,3 +176,46 @@ pattern goes in with `-e`: bare, `--squash` was parsed as an option and that che
 Blockquoted port notes are exempt, so a `> **Ported from upstream.**` paragraph may name what
 it replaced without tripping the gate. That exemption is scoped to blockquotes deliberately —
 exempting whole files would let a real regression through.
+
+## 9. Second upstream: Matt Pocock's skills
+
+Upstream: `mattpocock/skills` @ `4588b32ecab9ecc9fc8cc6b6c5e7d675b6004b0d`, the skills its
+`.claude-plugin/plugin.json` promotes. `transform/mattpocock.tsv` classifies each one, and
+`transform/mattpocock.py` imports them after pstack's Cursor rules and before frontmatter
+normalisation.
+
+**The split is by phase (user decision, 2026-10-05).** Matt's skills ask the human and wait
+for confirmation; pstack's proceed and report. Both stances are right in their own phase.
+Deciding what to build belongs to the human, so grilling's confirmation is the gate there.
+Building an agreed spec or ticket is the agent's, so pstack's autonomy applies. The router
+half lives in three `transform/rules.pl` lines on `poteto-mode` and the Bug fix playbook, so
+the dead-rule audit catches an upstream reword of their anchors.
+
+| Conflict found in the overlap map | Resolution |
+|---|---|
+| Both packs ship `tdd`, with opposite stances (opt-in regression gate vs test-first features) | Merged in `overlay/skills/tdd/SKILL.md`. Seams are agreed while deciding and taken from the ticket while building; the agent never stops to ask for them. Matt's `tests.md` and `mocking.md` ship beside it. Both upstream versions are drift-watched. |
+| Both packs ship `teach` for different jobs | Matt's is imported as `course`. |
+| Matt's `prototype` puts UI variants on the real route; the Prototype playbook keeps sketches out of production source | `prototype` excluded. `wayfinder`'s call to it now points at the playbook (an asserted edit in `mattpocock.py`). |
+| Matt's `pr` template and the Opening a PR playbook prescribe different PR bodies | `pr` excluded. |
+| Matt's `code-review` clashes with the built-in `code-review` by name | Excluded. `interrogate` and `blast-radius` review here. |
+| `unslop` would strip the emoji markers and coined terms ("frontier", "tracer bullet") Matt's templates depend on | The prose trigger in `poteto-mode` now says grilling rounds, specs, tickets and glossaries keep their own skills' templates and terms. |
+| Matt's user-only skills (`disable-model-invocation`, and `allow_implicit_invocation: false` in Codex's `agents/openai.yaml`) cannot be routed to | Both dropped on the core and merged skills, as for pstack's own. `MEASURED:` before this, Codex never showed its model 8 routed skills (`codex debug prompt-input`). Both kept on the extras (`triage`, `course`, `to-questionnaire`), which nothing routes to. The lint fails when the two harnesses disagree. |
+| Deciding had no playbook, while poteto-mode opens every task with a playbook's steps | `own/skills/poteto-mode/playbooks/deciding.md`, listed before Feature. It ends at approved tickets; building waits for the user. |
+| Agreed seams had no slot in the spec or ticket templates | Asserted edits add Seams under test to `to-spec`'s Testing Decisions and both `to-tickets` templates; `tdd` reads the ticket's, else the spec's. |
+| The build phase never read or closed the ticket | The router line for building fetches it through the tracker that setup recorded (`docs/agents/issue-tracker.md`), verifies against its acceptance criteria, and closes it on merge: `Closes #<n>` on GitHub or GitLab, `Status: resolved` on local markdown. The tracker docs say how to close by hand but not from a PR, so the router states it. |
+| Matt's skills name each other as `/name`, but a plugin registers only `/pstack-cc:name` (`MEASURED:` the init event's `slash_commands` has no bare entries), so `to-spec` told users to run a command that does not exist | `mattpocock.py` rewrites every backticked `/<imported skill>` to its registered name; the lint fails on any bare one left. |
+| The budget hook allows autopilot only when the user names it | A ticket queue goes to Feature per ticket in blocking order; Autopilot-stack only when named. |
+
+**Known gaps.**
+- `budget.sh` caps fan-out at 3 subagents per step on `balanced`. That cap also applies to
+  Matt's design-it-twice (3 or more subagents) and to grilling's fact-finding subagents.
+- Codex reads this plugin through its marketplace entry (`MEASURED:` `codex plugin
+  marketplace add` and `codex plugin add pstack-cc@pstack-cc` install it). Matt's per-skill
+  `agents/openai.yaml` files ship with the invocation policy above. pstack's skills have none.
+- `setup-matt-pocock-skills` writes its pointer block into CLAUDE.md or AGENTS.md, never both.
+  A repo read by both harnesses needs one to point at the other.
+- Matt's own plugin must be off wherever pstack-cc is on (README). Nothing enforces it.
+- `UNVERIFIED:` the skill listing has a character budget. A session measured on 2026-10-05,
+  before this change, already listed 41 of 49 pstack-cc skills without their description.
+  The router names its targets, so routing does not depend on descriptions, but a skill
+  reached only by its description may not trigger.

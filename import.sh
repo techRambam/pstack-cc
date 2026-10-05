@@ -5,13 +5,18 @@
 # edit transform/rules.pl (deterministic substitutions) or overlay/ (whole-file
 # replacements for things a regex cannot fix), then re-run.
 #
-# Updating to a newer upstream:  edit UPSTREAM_REF, run, read the diff.
+# Updating to a newer upstream:  edit UPSTREAM_REF or MATT_REF, run, read the diff.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPSTREAM_REPO="https://github.com/cursor/plugins.git"
 UPSTREAM_REF="e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a"
 SRC="$ROOT/upstream/pstack"
+# Second upstream: Matt Pocock's skills. Which of them ship, and how, is
+# transform/mattpocock.tsv; transform/mattpocock.py fails on anything it does not classify.
+MATT_REPO="https://github.com/mattpocock/skills.git"
+MATT_REF="4588b32ecab9ecc9fc8cc6b6c5e7d675b6004b0d"
+MATT="$ROOT/upstream-mattpocock"
 # The installable plugin. Everything else in this repo (transform/, tests/, docs/,
 # reference/) is the generator and stays out of every install.
 PLUGIN="$ROOT/plugins/pstack-cc"
@@ -33,9 +38,17 @@ git -C "$ROOT/upstream" checkout -q "$UPSTREAM_REF"
 log "upstream at $(git -C "$ROOT/upstream" rev-parse --short HEAD)"
 [ -d "$SRC" ] || die "no pstack/ at that ref"
 
+if [ ! -d "$MATT/.git" ]; then
+  log "cloning mattpocock/skills"
+  git clone -q "$MATT_REPO" "$MATT"
+fi
+git -C "$MATT" fetch -q origin "$MATT_REF" 2>/dev/null || git -C "$MATT" fetch -q origin
+git -C "$MATT" checkout -q "$MATT_REF"
+log "mattpocock/skills at $(git -C "$MATT" rev-parse --short HEAD)"
+
 # --- 2. clean copy ------------------------------------------------------
 log "copying skills/ agents/"
-rm -rf "$PLUGIN/skills" "$PLUGIN/agents"
+rm -rf "$PLUGIN/skills" "$PLUGIN/agents" "$PLUGIN/LICENSE.mattpocock"
 cp -R "$SRC/skills" "$PLUGIN/skills"
 cp -R "$SRC/agents" "$PLUGIN/agents"
 cp "$SRC/LICENSE" "$ROOT/LICENSE.upstream"
@@ -58,6 +71,12 @@ python3 "$ROOT/transform/build-counting-rules.py" "$ROOT/transform/rules.pl" "$R
 find "$PLUGIN/skills" "$PLUGIN/agents" -type f \
   \( -name '*.md' -o -name '*.ts' -o -name '*.mjs' -o -name '*.sh' -o -name '*.json' \) \
   -print0 | xargs -0 perl -pi "$RULES_C"
+
+# --- 3b. Matt Pocock's skills ------------------------------------------
+# After the Cursor rules, which are written for pstack's prose and must not touch his;
+# before frontmatter, which normalises both packs the same way.
+log "importing mattpocock/skills"
+python3 "$ROOT/transform/mattpocock.py" || die "mattpocock import failed (see above)"
 
 # --- 4. frontmatter normalisation --------------------------------------
 log "normalising frontmatter"
@@ -94,6 +113,11 @@ if [ -d "$ROOT/own" ]; then
   while IFS= read -r -d '' f; do
     rel="${f#./}"
     [ -e "$SRC/$rel" ] && die "own/$rel now exists upstream too -- move it to overlay/ or rename it"
+    # Only skills/ and agents/ are regenerated each run, so only there does an existing file
+    # mean a collision; elsewhere it is this file's own copy from the previous run.
+    case "$rel" in skills/*|agents/*)
+      [ -e "$PLUGIN/$rel" ] && die "own/$rel would overwrite a generated file (pstack, mattpocock or overlay/) -- rename it" ;;
+    esac
     mkdir -p "$PLUGIN/$(dirname "$rel")"
     cp "$ROOT/own/$rel" "$PLUGIN/$rel"
     printf '    own: %s\n' "$rel"
@@ -141,6 +165,8 @@ bash "$ROOT/tests/poteto-mode-hook.sh" >/dev/null || die "hook tests failed"
 bash "$ROOT/tests/poteto-auto-arm.sh" >/dev/null || die "auto-arm tests failed"
 log "testing cloud-session support"
 bash "$ROOT/tests/cloud-session.sh" >/dev/null || die "cloud-session tests failed"
+log "testing the mattpocock import guards"
+bash "$ROOT/tests/mattpocock-guards.sh" >/dev/null || die "mattpocock guard tests failed (run tests/mattpocock-guards.sh)"
 log "testing the budget hook and usage report"
 bash "$ROOT/tests/budget.sh" >/dev/null || die "budget tests failed"
 bash "$ROOT/tests/pstack-usage.sh" >/dev/null || die "pstack-usage tests failed"
