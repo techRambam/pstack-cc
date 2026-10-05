@@ -9,7 +9,7 @@ import re, sys, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "plugins" / "pstack-cc"
 SKILL_OK = {"name", "description", "allowed-tools", "user-invocable",
-            "license", "paths", "model", "version"}
+            "license", "paths", "model", "version", "argument-hint"}
 AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
             "background", "isolation", "permissionMode", "maxTurns", "skills",
             "effort", "memory", "omitClaudeMd"}
@@ -17,6 +17,10 @@ AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
 # a server-side secret) and no pstack skill routes to it. Every other skill must stay
 # invocable by Claude, or the skills that route to it are refused.
 SLASH_ONLY_OK = {"make-bot-ui"}
+# Matt Pocock's skills that nothing routes to keep his flags (transform/frontmatter.py).
+SLASH_ONLY_OK |= {line.split("\t")[2] for line in
+                  (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().splitlines()
+                  if line.startswith("extra\t")}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 def fm(p):
@@ -70,7 +74,11 @@ EXTERNAL = {"skill-creator"}  # anthropic-skills:skill-creator, not ours
 PATH_RE = re.compile(r"`((?:\.\./)*(?:playbooks|references|scripts)/[A-Za-z0-9_./-]+)`"
                      r"|\]\(((?:\.\./)*(?:playbooks|references|scripts)/[A-Za-z0-9_./-]+)\)")
 NS_RE = re.compile(r"pstack-cc:([a-z0-9-]+)")
-BOLD_RE = re.compile(r"\*\*([a-z0-9-]+)\*\* (?:principle )?skill")
+# "a **model-invoked** skill" describes a kind of skill, not one by name, so an
+# indefinite article in front exempts it.
+BOLD_RE = re.compile(r"(?<![Aa] )(?<![Aa]n )\*\*([a-z0-9-]+)\*\* (?:principle )?skill")
+# Matt Pocock's skills chain by naming the tool: Call the Skill tool with "grilling".
+CALL_RE = re.compile(r"[Ss]kill tool with [`\"']([a-z0-9-]+)[`\"']")
 skill_names = {p.parent.name for p in skills}
 agent_names = {p.stem for p in agents}
 checked = 0
@@ -92,6 +100,10 @@ for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
         n = m.group(1); checked += 1
         if n not in skill_names | EXTERNAL and f"principle-{n}" not in skill_names:
             errs.append(f"{rel}: **{n}** skill does not exist")
+    for m in CALL_RE.finditer(text):
+        n = m.group(1); checked += 1
+        if n not in skill_names:
+            errs.append(f"{rel}: calls the Skill tool with {n!r}, which is not a skill in this plugin")
 
 print(f"linted {len(skills)} skills, {len(agents)} agents, {checked} cross-references")
 for e in errs: print("  FAIL " + e)

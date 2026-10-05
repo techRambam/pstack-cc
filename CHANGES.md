@@ -5,6 +5,10 @@ entries are keyed by pull request. CI fails a pull request that changes anything
 `plugins/` without adding a line here, so every install-visible change is recorded.
 
 ## Unreleased
+- Matt Pocock's skills join the plugin as a second pinned upstream (`mattpocock/skills` @ `4588b32`), split by phase: his skills decide what to build with you (`grill-with-docs`, `grilling`, `domain-modeling`, `to-spec`, `to-tickets`, `wayfinder`), and pstack's playbooks build it autonomously. `poteto-mode` routes to them. 18 skills imported: 14 core, 4 unrouted extras (`triage`, `course`, `wizard`, `to-questionnaire`). 8 excluded where pstack covers the job. `transform/mattpocock.tsv` records each decision.
+- `tdd` merges both packs: test-first vertical slices for new behavior, the regression gate for bugs. Seams come from the spec or ticket while building, never from a mid-build question.
+- The Bug fix playbook builds a hard bug's feedback loop with `diagnosing-bugs` before hypothesising.
+- Build guards: an unclassified Matt skill, a reworded edit anchor, or a change to his `tdd` fails `import.sh`. The lint checks every `Call the Skill tool with "<name>"` against the shipped skills.
 - `poteto-agent` now says how to load poteto-mode: it is preloaded, and otherwise the agent's first action is the Skill tool with `pstack-cc:poteto-mode`. Upstream's pathless "read the SKILL.md" sent a spawned agent looking in `~/.claude/skills/`, where a plugin skill never is. Principle leaves load the same way. `tests/invocation-live.sh` checks, from the spawned agent's own transcript, that it has the skill and searched no disk.
 - README: the cloud-session install route that actually works (environment setup script plus `CLAUDE_CODE_PLUGIN_DIRS`), with the four routes that were tested and failed.
 

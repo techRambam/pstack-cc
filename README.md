@@ -1,7 +1,8 @@
 # pstack-cc
 
 [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (@poteto),
-adapted for **Claude Code**. 50 skills, 23 playbooks, 24 principles, 2 agents.
+adapted for **Claude Code**, with [Matt Pocock's skills](https://github.com/mattpocock/skills)
+folded into the same workflow. 68 skills, 23 playbooks, 24 principles, 3 agents.
 Works in local sessions and in [cloud sessions](#cloud-sessions).
 
 Upstream is a *Cursor* plugin — it has a `.cursor-plugin/plugin.json` and no Claude Code
@@ -51,6 +52,43 @@ does not count as a failure.
 ```bash
 ./plugins/pstack-cc/bin/panelist doctor
 ```
+
+## Matt Pocock's skills, in the same flow
+
+pstack is strong at building and proving: architect, verify on the real surface,
+multi-model review, autonomy. Matt Pocock's skills are strong at deciding what to build with
+you: grilling, a glossary and ADRs, specs and tickets. This plugin runs both as one workflow,
+split by phase.
+
+| Phase | Who decides | Skills |
+|---|---|---|
+| Deciding what to build | You. The agent asks, and your confirmation is the gate. | `grill-with-docs` (`grilling` plus `domain-modeling`), `to-spec`, `to-tickets`, `wayfinder` for work bigger than a session |
+| Building an agreed spec or ticket | The agent, autonomously | pstack's Feature and Bug fix playbooks, `tdd` at the seams the ticket names, Autopilot-stack for a ticket queue |
+
+Specs and tickets live in GitHub issues. Run `/pstack-cc:setup-matt-pocock-skills` once in
+each repo before the first spec. It writes the tracker and domain-doc config those skills read.
+
+Matt's repo is a second pinned upstream of the same generator (`MATT_REF` in `import.sh`).
+[`transform/mattpocock.tsv`](transform/mattpocock.tsv) classifies every skill his plugin
+promotes:
+
+| Role | What happens | Skills |
+|---|---|---|
+| core | imported and routed to from `poteto-mode` | grilling, grill-me, grill-with-docs, domain-modeling, codebase-design, improve-codebase-architecture, to-spec, to-tickets, wayfinder, research, diagnosing-bugs, setup-matt-pocock-skills, writing-for-agents, handoff |
+| merge | folded into pstack's skill of the same name | tdd: Matt's test-first vertical slices for new behavior plus pstack's regression gate for bugs |
+| extra | imported, but nothing routes to them | triage, course (Matt's `teach`, renamed because pstack's `teach` is a different job), wizard, to-questionnaire |
+| exclude | not imported; pstack covers the job | ask-matt, implement, implement-spec, prototype, code-review, pr, retro, wait-what |
+
+Three more guards fail the build, the same way pstack's do:
+
+| Guard | Catches |
+|---|---|
+| `transform/mattpocock.py`, manifest check | Matt promoting a skill the manifest does not classify, or removing one it names |
+| `transform/mattpocock.py`, edits | an edit to his text no longer matching exactly as often as expected (for example, `wayfinder`'s call to his excluded `prototype` skill now points at the Prototype playbook) |
+| `transform/audit.py`, merge drift | Matt rewriting his `tdd/SKILL.md`, which the merged overlay replaces |
+
+`tests/lint-skills.py` also checks every `Call the Skill tool with "<name>"` in his skills
+against the skills this plugin ships, so excluding a skill another one calls fails the build.
 
 ## Install
 
@@ -251,3 +289,4 @@ Full decision record: [`docs/PORT.md`](docs/PORT.md).
 ## Licence
 
 Upstream is MIT (`LICENSE.upstream`). This adaptation keeps that licence and attribution.
+Matt Pocock's skills are MIT too, and ship with their licence as `LICENSE.mattpocock`.

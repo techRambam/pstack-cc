@@ -67,6 +67,20 @@ for f in sorted((ROOT/"overlay").rglob("*")):
         continue
     current[rel] = hashlib.sha256(up.read_bytes()).hexdigest()
 
+# A merge row in transform/mattpocock.tsv folds Matt's SKILL.md into an overlay/ file
+# the same way, so his version is watched under the same rule, keyed by its path in his
+# repo. The overlay's own path above already watches the pstack side.
+MATT = ROOT / "upstream-mattpocock"
+for line in (ROOT / "transform" / "mattpocock.tsv").read_text().splitlines():
+    if not line.startswith("merge\t"):
+        continue
+    source = line.split("\t")[1]
+    up = MATT / source / "SKILL.md"
+    if not up.exists():
+        missing.append(f"mattpocock/{source}/SKILL.md")
+        continue
+    current[f"mattpocock/{source}/SKILL.md"] = hashlib.sha256(up.read_bytes()).hexdigest()
+
 # A missing upstream target is fatal in BOTH modes. Overlays are copied BEFORE the
 # audit runs, so if upstream deleted a skill an overlay replaces, accepting would
 # rewrite the baseline without that path and ship the deleted skill back as if it
@@ -99,7 +113,8 @@ else:
             problems.append(
                 f"OVERLAY DRIFT {rel}: upstream's version CHANGED since this override was written.\n"
                 f"      was {recorded[rel][:16]}  now {h[:16]}\n"
-                f"      Read upstream/pstack/{rel}, fold anything new into overlay/{rel},\n"
+                f"      Read upstream{'-' if rel.startswith('mattpocock/') else '/pstack/'}{rel}, "
+                f"fold anything new into the overlay/ file that replaces it,\n"
                 f"      then re-accept: ./import.sh --accept-overlay")
     print(f"    overlay: {len(current)} file(s) checked against upstream")
 

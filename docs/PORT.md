@@ -173,3 +173,38 @@ A hit fails `import.sh` with a non-zero exit. Blockquoted port notes are exempt,
 `> **Ported from upstream.**` paragraph may name what it replaced without tripping the gate.
 That exemption is scoped to blockquotes deliberately — exempting whole files would let a real
 regression through.
+
+## 9. Second upstream: Matt Pocock's skills
+
+Upstream: `mattpocock/skills` @ `4588b32ecab9ecc9fc8cc6b6c5e7d675b6004b0d`, the skills its
+`.claude-plugin/plugin.json` promotes. `transform/mattpocock.tsv` classifies each one, and
+`transform/mattpocock.py` imports them after pstack's Cursor rules and before frontmatter
+normalisation.
+
+**The split is by phase (user decision, 2026-10-05).** Matt's skills ask the human and wait
+for confirmation; pstack's proceed and report. Both stances are right in their own phase.
+Deciding what to build belongs to the human, so grilling's confirmation is the gate there.
+Building an agreed spec or ticket is the agent's, so pstack's autonomy applies. The router
+half lives in three `transform/rules.pl` lines on `poteto-mode` and the Bug fix playbook, so
+the dead-rule audit catches an upstream reword of their anchors.
+
+| Conflict found in the overlap map | Resolution |
+|---|---|
+| Both packs ship `tdd`, with opposite stances (opt-in regression gate vs test-first features) | Merged in `overlay/skills/tdd/SKILL.md`. Seams are agreed while deciding and taken from the ticket while building; the agent never stops to ask for them. Matt's `tests.md` and `mocking.md` ship beside it. Both upstream versions are drift-watched. |
+| Both packs ship `teach` for different jobs | Matt's is imported as `course`. |
+| Matt's `prototype` puts UI variants on the real route; the Prototype playbook keeps sketches out of production source | `prototype` excluded. `wayfinder`'s call to it now points at the playbook (an asserted edit in `mattpocock.py`). |
+| Matt's `pr` template and the Opening a PR playbook prescribe different PR bodies | `pr` excluded. |
+| Matt's `code-review` clashes with the built-in `code-review` by name | Excluded. `interrogate` and `blast-radius` review here. |
+| `unslop` would strip the emoji markers and coined terms ("frontier", "tracer bullet") Matt's templates depend on | The prose trigger in `poteto-mode` now says grilling rounds, specs, tickets and glossaries keep their own skills' templates and terms. |
+| Matt's user-only skills (`disable-model-invocation`) cannot be routed to | Dropped on the core skills, as for pstack's own. Kept on the extras (`triage`, `course`, `to-questionnaire`), which nothing routes to. |
+| `pr` carries a `metadata` key, which a plugin skill may not have | Dropped by `transform/frontmatter.py`, nested lines included. The credit ships in the skill's `CREDITS.md`. |
+
+**Known gaps.**
+- `budget.sh` caps fan-out at 3 subagents per step on `balanced`. That cap also applies to
+  Matt's design-it-twice (3 or more subagents) and to grilling's fact-finding subagents.
+- `setup-matt-pocock-skills` and its dependents name `/setup-matt-pocock-skills` without the
+  `pstack-cc:` prefix. `UNVERIFIED:` whether a bare slash name resolves to a plugin skill;
+  the Skill tool loads it either way.
+- Codex reads this plugin through its own marketplace entry. Matt's per-skill
+  `agents/openai.yaml` files ship unchanged, so his skills keep their Codex metadata.
+  pstack's skills have none.

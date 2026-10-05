@@ -18,8 +18,16 @@ DROP = {"mode", "icon", "color", "reminder"}          # Cursor-only skill keys
 # key goes. Their descriptions are explicit ("Use for /how"), which keeps them from
 # triggering on unrelated requests.
 DROP |= {"disable-model-invocation"}
+# Matt Pocock's `pr` carries credits under `metadata`, which a plugin skill may not have.
+# The same attribution ships as the skill's CREDITS.md, so nothing is lost.
+DROP |= {"metadata"}
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "pstack-cc"
+# Matt's skills that nothing in pstack routes to keep his own invocation flags: the
+# routing argument above is the only reason to drop them, and it does not apply.
+KEEP_FLAGS = {line.split("\t")[2] for line in
+              (ROOT / "transform" / "mattpocock.tsv").read_text().splitlines()
+              if line.startswith("extra\t")}
 
 def slug(v):
     return re.sub(r"[^a-z0-9]+", "-", v.strip().lower()).strip("-")
@@ -47,8 +55,11 @@ for base in sys.argv[1:]:
         fm, body = split_fm(raw)
         if fm is None:
             continue
-        out, touched = [], False
+        out, touched, dropping = [], False, False
         for line in fm.split("\n"):
+            if dropping and line[:1] in (" ", "\t"):
+                continue                                  # a dropped key's nested lines
+            dropping = False
             m = re.match(r"^([A-Za-z_-]+):\s*(.*)$", line)
             if not m:
                 out.append(line)
@@ -56,8 +67,11 @@ for base in sys.argv[1:]:
             key, val = m.group(1), m.group(2)
             if key == "reminder" and "poteto-mode" in str(p):
                 reminder = val.strip().strip('"').strip("'")
+            if key == "disable-model-invocation" and p.parent.name in KEEP_FLAGS:
+                out.append(line)
+                continue
             if key in DROP:
-                touched = True
+                touched = dropping = True
                 dropped += 1
                 continue
             if key == "name":
