@@ -8,9 +8,17 @@
     {
       "name": "pstack-cc",
       "source": "./plugins/pstack-cc",
-      "description": "pstack's skills, playbooks and principles with Cursor-only mechanisms ported to Claude Code.",
+      "description": "pstack's skills, playbooks and principles ported to Claude Code, with Matt Pocock's grilling, spec and ticket skills in the same flow.",
       "category": "engineering",
-      "keywords": ["pstack", "poteto-mode", "workflow", "principles", "verification"]
+      "keywords": [
+        "pstack",
+        "poteto-mode",
+        "workflow",
+        "principles",
+        "verification",
+        "mattpocock",
+        "grilling"
+      ]
     }
   ]
 }

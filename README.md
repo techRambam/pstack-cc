@@ -1,7 +1,8 @@
 # pstack-cc
 
 [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (@poteto),
-adapted for **Claude Code**. 50 skills, 23 playbooks, 24 principles, 2 agents.
+adapted for **Claude Code**, with [Matt Pocock's skills](https://github.com/mattpocock/skills)
+folded into the same workflow. 68 skills, 24 playbooks, 24 principles, 3 agents.
 Works in local sessions and in [cloud sessions](#cloud-sessions).
 
 Upstream is a *Cursor* plugin — it has a `.cursor-plugin/plugin.json` and no Claude Code
@@ -12,7 +13,7 @@ plugin, regenerated for Claude Code.
 
 The plugin is `plugins/pstack-cc/`. That is all an install copies; the generator, tests and
 reference material around it stay in the repo. Its `skills/` and `agents/` are **generated
-output. Never hand-edit them.** They are produced by `./import.sh` from a pinned upstream ref,
+output. Never hand-edit them.** They are produced by `./import.sh` from two pinned upstream refs,
 through:
 
 | Piece | Job |
@@ -26,7 +27,8 @@ through:
 | `tests/` | a frontmatter and cross-reference linter, and functional tests for the hooks and cloud-session support |
 | `CHANGES.md` | what each update brought; CI fails a plugin change that adds no entry |
 
-To update: bump `UPSTREAM_REF` in `import.sh`, run it, read the diff.
+To update: bump `UPSTREAM_REF` (pstack) or `MATT_REF` (Matt Pocock's skills) in `import.sh`,
+run it, read the diff.
 
 ```bash
 ./import.sh
@@ -52,6 +54,54 @@ does not count as a failure.
 ./plugins/pstack-cc/bin/panelist doctor
 ```
 
+## Matt Pocock's skills, in the same flow
+
+pstack is strong at building and proving: architect, verify on the real surface,
+multi-model review, autonomy. Matt Pocock's skills are strong at deciding what to build with
+you: grilling, a glossary and ADRs, specs and tickets. This plugin runs both as one workflow,
+split by phase.
+
+| Phase | Who decides | Skills |
+|---|---|---|
+| Deciding what to build | You. The agent asks, and your confirmation is the gate. | The Deciding playbook: `setup-matt-pocock-skills` once per repo, `grill-with-docs` (`grilling` plus `domain-modeling`), `to-spec`, `to-tickets`, `wayfinder` for work bigger than a session |
+| Building an agreed spec or ticket | The agent, autonomously | pstack's Feature and Bug fix playbooks, one ticket at a time in blocking order. The ticket's acceptance criteria are the verify predicate, `tdd` tests at its seams under test, and merging the work closes it. Autopilot-stack when you ask for it. |
+
+Specs and tickets go to the tracker that `/pstack-cc:setup-matt-pocock-skills` records, once per
+repo. Choose GitHub issues when it asks; it proposes them for a GitHub remote. In a cloud
+session `gh issue` is refused like the rest of GraphQL, and the cloud note points the skills at
+the `mcp__github__*` issue tools instead.
+
+**Turn off Matt's own plugin** wherever pstack-cc is on. With both enabled, two `tdd` skills
+with opposite stances are live, and his excluded skills come back. In Claude Code, run
+`claude plugin disable mattpocock-skills@mattpocock`. In Codex, set
+`[plugins."mattpocock-skills@mattpocock"] enabled = false` in `~/.codex/config.toml`.
+
+Matt's repo is a second pinned upstream of the same generator (`MATT_REF` in `import.sh`).
+[`transform/mattpocock.tsv`](transform/mattpocock.tsv) classifies every skill his plugin
+promotes:
+
+| Role | What happens | Skills |
+|---|---|---|
+| core | imported, and routed to from `poteto-mode` or the Deciding playbook (`grill-me` is a typed entry point to `grilling`) | grilling, grill-me, grill-with-docs, domain-modeling, codebase-design, improve-codebase-architecture, to-spec, to-tickets, wayfinder, research, diagnosing-bugs, setup-matt-pocock-skills, writing-for-agents, handoff |
+| merge | folded into pstack's skill of the same name | tdd: Matt's test-first vertical slices for new behavior plus pstack's regression gate for bugs |
+| extra | imported, but nothing routes to them, and they keep Matt's user-only flag | triage, course (Matt's `teach`, renamed because pstack's `teach` is a different job), wizard, to-questionnaire |
+| exclude | not imported; pstack covers the job | ask-matt, implement, implement-spec, prototype, code-review, pr, retro, wait-what |
+
+Three more guards fail the build, the same way pstack's do:
+
+| Guard | Catches |
+|---|---|
+| `transform/mattpocock.py`, manifest check | Matt promoting a skill the manifest does not classify, or removing one it names |
+| `transform/mattpocock.py`, edits | an edit to his text no longer matching exactly as often as expected (for example, `wayfinder`'s call to his excluded `prototype` skill now points at the Prototype playbook) |
+| `transform/mattpocock.py`, merge rows | a merge row with no `overlay/` SKILL.md, which would ship pstack's skill unmerged |
+| `transform/audit.py`, merge drift | Matt rewriting or deleting his `tdd/SKILL.md`, which the merged overlay replaces |
+
+`tests/lint-skills.py` checks every skill named in a Skill-tool call (`Call the Skill tool with
+"<name>"`, `the Skill tool twice, for "a" and "b"`) against the skills this plugin ships, and every
+link to a sibling `.md` file. It also fails when a skill is user-only in Claude Code but not in
+Codex (`agents/openai.yaml`), or the other way round, and when an extra loses Matt's flag.
+`tests/mattpocock-guards.sh` breaks each guard in a scratch copy and checks that the build fails.
+
 ## Install
 
 ```bash
@@ -68,7 +118,8 @@ Everything is namespaced (`/pstack-cc:how`, `/pstack-cc:tdd`), so nothing shadow
 or another pack. Upstream marks its skills `disable-model-invocation: true`. Claude Code reads
 that flag more strictly than upstream intends: it refuses Claude's own Skill tool call, so
 poteto-mode could not route to `/how`, `/why` or a principle skill. The flag is therefore
-dropped from every skill except `make-bot-ui`. The descriptions are explicit ("Use for /how"),
+dropped from every skill except `make-bot-ui` and Matt Pocock's unrouted extras (`triage`,
+`course`, `to-questionnaire`), which nothing routes to. The descriptions are explicit ("Use for /how"),
 so the skills stay out of unrelated requests. The 24 `principle-*` skills are
 `user-invocable: false` instead: other skills route to them, but they stay out of your `/` menu.
 
@@ -138,7 +189,7 @@ they install plugins (documented; not tested here, since this account is on a Ma
 ```
 
 Once loaded, `plugins/pstack-cc/hooks/cloud-session.sh` (a `SessionStart` hook that only speaks when
-`CLAUDE_CODE_REMOTE=true`) tells the model what differs from a laptop, so the fifty generated
+`CLAUDE_CODE_REMOTE=true`) tells the model what differs from a laptop, so the generated
 skills stay identical to upstream instead of forking for the cloud:
 
 | Local assumption | In a cloud session |
@@ -251,3 +302,4 @@ Full decision record: [`docs/PORT.md`](docs/PORT.md).
 ## Licence
 
 Upstream is MIT (`LICENSE.upstream`). This adaptation keeps that licence and attribution.
+Matt Pocock's skills are MIT too, and ship with their licence as `LICENSE.mattpocock`.

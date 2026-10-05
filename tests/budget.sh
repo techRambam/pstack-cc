@@ -6,7 +6,7 @@ HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/plugins/pstack-cc/hooks/b
 pass=0; fail=0
 eq() { if [ "$2" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
        else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$1" "$3" "$2"; fi; }
-CFG="$(mktemp -d)"; PROJ="$(mktemp -d)"
+CFG="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; PROJ="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2
 run() { printf '{"source":"startup"}' | env -u PSTACK_CC_BUDGET CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$PROJ" "$@" bash "$HOOK" 2>/dev/null; }
 
 eq "no config defaults to balanced"     "$(run | grep -c 'usage budget: balanced')" "1"

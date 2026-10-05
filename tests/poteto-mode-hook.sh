@@ -3,7 +3,7 @@
 # stdin payloads and asserts on what it injects.
 set -uo pipefail
 HOOK="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/plugins/pstack-cc/hooks/poteto-mode.sh"
-CLAUDE_CONFIG_DIR="$(mktemp -d)"; export CLAUDE_CONFIG_DIR
+CLAUDE_CONFIG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; export CLAUDE_CONFIG_DIR
 SID="test-session-$$"
 pass=0; fail=0
 

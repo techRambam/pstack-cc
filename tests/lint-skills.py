@@ -9,7 +9,7 @@ import re, sys, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent / "plugins" / "pstack-cc"
 SKILL_OK = {"name", "description", "allowed-tools", "user-invocable",
-            "license", "paths", "model", "version"}
+            "license", "paths", "model", "version", "argument-hint"}
 AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
             "background", "isolation", "permissionMode", "maxTurns", "skills",
             "effort", "memory", "omitClaudeMd"}
@@ -17,6 +17,10 @@ AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
 # a server-side secret) and no pstack skill routes to it. Every other skill must stay
 # invocable by Claude, or the skills that route to it are refused.
 SLASH_ONLY_OK = {"make-bot-ui"}
+# Matt Pocock's skills that nothing routes to keep his flags (transform/frontmatter.py).
+SLASH_ONLY_OK |= {line.split("\t")[2] for line in
+                  (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().splitlines()
+                  if line.startswith("extra\t")}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 def fm(p):
@@ -70,7 +74,15 @@ EXTERNAL = {"skill-creator"}  # anthropic-skills:skill-creator, not ours
 PATH_RE = re.compile(r"`((?:\.\./)*(?:playbooks|references|scripts)/[A-Za-z0-9_./-]+)`"
                      r"|\]\(((?:\.\./)*(?:playbooks|references|scripts)/[A-Za-z0-9_./-]+)\)")
 NS_RE = re.compile(r"pstack-cc:([a-z0-9-]+)")
-BOLD_RE = re.compile(r"\*\*([a-z0-9-]+)\*\* (?:principle )?skill")
+# "a **model-invoked** skill" describes a kind of skill, not one by name, so an
+# indefinite article in front exempts it.
+BOLD_RE = re.compile(r"(?<![Aa] )(?<![Aa]n )\*\*([a-z0-9-]+)\*\* (?:principle )?skill")
+# Matt Pocock's skills chain by naming the tool, one name or several in the clause:
+# Call the Skill tool with "grilling". / call the Skill tool twice, for "a" and "b".
+CALL_RE = re.compile(r"[Ss]kill tool\b[^.\n]*")
+QUOTED_RE = re.compile(r"[`\"']([a-z0-9]+(?:-[a-z0-9]+)*)[`\"']")
+# A bare link to a file beside the referring one, as Matt's skills write them: [x](tests.md)
+SIBLING_RE = re.compile(r"\]\((?:\./)?([A-Za-z0-9_.-]+\.md)\)")
 skill_names = {p.parent.name for p in skills}
 agent_names = {p.stem for p in agents}
 checked = 0
@@ -92,6 +104,66 @@ for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
         n = m.group(1); checked += 1
         if n not in skill_names | EXTERNAL and f"principle-{n}" not in skill_names:
             errs.append(f"{rel}: **{n}** skill does not exist")
+    for clause in CALL_RE.finditer(text):
+        for n in QUOTED_RE.findall(clause.group(0)):
+            checked += 1
+            if n not in skill_names:
+                errs.append(f"{rel}: calls the Skill tool with {n!r}, which is not a skill in this plugin")
+    for m in SIBLING_RE.finditer(text):
+        checked += 1
+        if not (md.parent / m.group(1)).exists():
+            errs.append(f"{rel}: dead link to {m.group(1)!r}")
+
+# --- invocation flags across harnesses ----------------------------------------
+# A skill is user-only in Claude Code (disable-model-invocation) exactly when it is in
+# Codex (agents/openai.yaml allow_implicit_invocation: false). A routed skill hidden from
+# one harness's model has no route there.
+def user_only(p):
+    return (fm(p) or {}).get("disable-model-invocation", "").strip() == "true"
+for p in skills:
+    y = p.parent / "agents" / "openai.yaml"
+    if not y.exists():
+        continue
+    codex = "allow_implicit_invocation: false" in y.read_text(encoding="utf-8")
+    if codex != user_only(p):
+        errs.append(f"{p.relative_to(ROOT)}: user-only in "
+                    f"{'Codex but not Claude Code' if codex else 'Claude Code but not Codex'}")
+
+# Matt's unrouted extras keep his flag exactly, whichever way it points.
+MATT = ROOT.parent.parent / "upstream-mattpocock"
+for line in (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().splitlines():
+    if not line.startswith("extra\t") or not MATT.exists():
+        continue
+    _, source, target, _ = line.split("\t")
+    if user_only(MATT / source / "SKILL.md") != user_only(ROOT / "skills" / target / "SKILL.md"):
+        errs.append(f"skills/{target}/SKILL.md: an extra must keep Matt's disable-model-invocation as he set it")
+
+# ...and nothing routes to them: no other file loads one by name or calls it.
+EXTRAS = {line.split("\t")[2] for line in
+          (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().splitlines()
+          if line.startswith("extra\t")}
+for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
+    rel = md.relative_to(ROOT)
+    if rel.parts[0] == "skills" and rel.parts[1] in EXTRAS:
+        continue
+    text = md.read_text(encoding="utf-8")
+    # A slash command (`/pstack-cc:triage`) is what the user types, not a route for the agent.
+    named = set(BOLD_RE.findall(text)) | set(re.findall(r"(?<!/)pstack-cc:([a-z0-9-]+)", text))
+    for clause in CALL_RE.finditer(text):
+        named |= set(QUOTED_RE.findall(clause.group(0)))
+    for n in sorted(named & EXTRAS):
+        errs.append(f"{rel}: routes to {n!r}, which is an unrouted extra (transform/mattpocock.tsv)")
+
+# Matt's skills are registered as /pstack-cc:<name>; a bare `/<name>` names no command.
+# The same pattern transform/mattpocock.py rewrites with, so the two cannot disagree.
+sys.path.insert(0, str(ROOT.parent.parent / "transform"))
+import mattpocock  # noqa: E402
+BARE_RE, TARGET = mattpocock.bare_slash(mattpocock.manifest())
+for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
+    for m in BARE_RE.finditer(md.read_text(encoding="utf-8")):
+        checked += 1
+        errs.append(f"{md.relative_to(ROOT)}: /{m.group(1)} is not a command; the plugin registers "
+                    f"/pstack-cc:{TARGET[m.group(1)]}")
 
 print(f"linted {len(skills)} skills, {len(agents)} agents, {checked} cross-references")
 for e in errs: print("  FAIL " + e)

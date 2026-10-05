@@ -1,0 +1,39 @@
+# Every skill Matt Pocock's plugin promotes (its .claude-plugin/plugin.json "skills"), and
+# what this port does with it. transform/mattpocock.py fails the build when that list
+# names a skill this file does not, or this file names one that is gone, so an upstream
+# addition or removal is a decision, never a silent drift.
+#
+# role     core     imported and routed to from poteto-mode (rules.pl)
+#          extra    imported, but nothing in pstack routes to it; Matt's invocation flags kept
+#          merge    folded into the pstack skill of the same name: SKILL.md comes from overlay/,
+#                   the other files are copied, and the upstream SKILL.md is watched for drift
+#          exclude  not imported; the reason says what covers the job instead
+#
+# role	source	target	reason
+core	skills/productivity/grilling	grilling	the interview primitive; pstack has no skill that asks the human
+core	skills/productivity/grill-me	grill-me	user entry point to grilling
+core	skills/engineering/grill-with-docs	grill-with-docs	grilling plus domain-modeling; the deciding-what-to-build entry
+core	skills/engineering/domain-modeling	domain-modeling	GLOSSARY.md and ADRs; principle-model-the-domain covers types, not words
+core	skills/engineering/codebase-design	codebase-design	deep-module vocabulary the design and test skills share
+core	skills/engineering/improve-codebase-architecture	improve-codebase-architecture	finds refactor candidates; the Refactoring playbook starts from a chosen one
+core	skills/engineering/to-spec	to-spec	publishes the agreed spec to the issue tracker
+core	skills/engineering/to-tickets	to-tickets	splits a spec into tracer-bullet tickets with blocking edges
+core	skills/engineering/wayfinder	wayfinder	decision map for work bigger than one session
+core	skills/engineering/research	research	external primary sources saved as a cited note; how and why cover the codebase
+core	skills/engineering/diagnosing-bugs	diagnosing-bugs	the feedback-loop discipline the Bug fix playbook's reproduce step lacks
+core	skills/engineering/setup-matt-pocock-skills	setup-matt-pocock-skills	writes the per-repo tracker and domain-doc config the spec and ticket skills read
+exclude	skills/engineering/pr	-	the Opening a PR playbook owns the PR body, and the two templates disagree
+core	skills/productivity/writing-for-agents	writing-for-agents	what goes into an agent-facing doc and where; unslop covers the sentences
+core	skills/productivity/handoff	handoff	portable handoff to another harness or person; Pause safely covers resuming here
+merge	skills/engineering/tdd	tdd	both packs ship tdd: Matt's test-first slices plus pstack's regression gate
+extra	skills/engineering/triage	triage	issue and external-PR triage state machine
+extra	skills/productivity/teach	course	renamed: pstack-cc:teach explains code now and forbids quizzes, Matt's builds a course
+extra	skills/engineering/wizard	wizard	scripts the steps only a human can do
+extra	skills/productivity/to-questionnaire	to-questionnaire	a questionnaire for one person, feeding grilling or a spec
+exclude	skills/engineering/ask-matt	-	poteto-mode is the router; its flow map lives in the routing rules
+exclude	skills/engineering/implement	-	the Feature playbook does this with verification and a PR
+exclude	skills/engineering/implement-spec	-	Autopilot-stack builds a ticket queue into one reviewed stack
+exclude	skills/engineering/prototype	-	the Prototype playbook; the two disagree on where prototype code lives
+exclude	skills/engineering/code-review	-	interrogate and blast-radius review here; the name also clashes with the built-in code-review
+exclude	skills/engineering/retro	-	reflect and correct cover session retrospectives
+exclude	skills/productivity/wait-what	-	bro does the same restatement
