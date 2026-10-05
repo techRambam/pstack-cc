@@ -138,6 +138,21 @@ for line in (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().sp
     if user_only(MATT / source / "SKILL.md") != user_only(ROOT / "skills" / target / "SKILL.md"):
         errs.append(f"skills/{target}/SKILL.md: an extra must keep Matt's disable-model-invocation as he set it")
 
+# ...and nothing routes to them: no other file loads one by name or calls it.
+EXTRAS = {line.split("\t")[2] for line in
+          (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().splitlines()
+          if line.startswith("extra\t")}
+for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
+    rel = md.relative_to(ROOT)
+    if rel.parts[0] == "skills" and rel.parts[1] in EXTRAS:
+        continue
+    text = md.read_text(encoding="utf-8")
+    named = set(BOLD_RE.findall(text)) | set(NS_RE.findall(text))
+    for clause in CALL_RE.finditer(text):
+        named |= set(QUOTED_RE.findall(clause.group(0)))
+    for n in sorted(named & EXTRAS):
+        errs.append(f"{rel}: routes to {n!r}, which is an unrouted extra (transform/mattpocock.tsv)")
+
 print(f"linted {len(skills)} skills, {len(agents)} agents, {checked} cross-references")
 for e in errs: print("  FAIL " + e)
 print(f"\n{len(errs)} problem(s)")

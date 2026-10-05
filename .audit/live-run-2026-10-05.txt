@@ -1,0 +1,26 @@
+  ok    agent registered as pstack-cc:poteto-agent
+  ok    agent registered as pstack-cc:comment-sicko
+  ok    agent registered as pstack-cc:read-only
+  ok    principles are out of the / menu
+  ok    routable skills are in the / menu
+  ok    budget hook output reached the session
+  ok    cloud hook output reached the session
+  ok    Matt's core skill in the / menu
+  ok    Matt's teach ships renamed as course
+  ok    extra triage is registered
+  ok    excluded ask-matt is absent
+  ok    excluded pr is absent
+  ok    a bare Matt skill name loads
+  ok    a routed Matt skill loads
+  ok    an unrouted extra stays slash-only
+  ok    Skill tool loads a routed-to skill
+  ok    read-only agent has no Edit
+  ok    read-only agent has no Write
+  ok    read-only agent cannot spawn agents
+  ok    read-only agent can still read
+  ok    poteto-agent has poteto-mode without a disk search
+
+21 passed, 0 failed
+exit=0
+
+[exited with code 0]
