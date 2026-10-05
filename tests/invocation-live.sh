@@ -56,6 +56,40 @@ eq "extra triage is registered"                  "$(field slash_commands | grep 
 eq "excluded ask-matt is absent"                 "$(field slash_commands | grep -cx 'pstack-cc:ask-matt')" "0"
 eq "excluded pr is absent"                       "$(field slash_commands | grep -cx 'pstack-cc:pr')" "0"
 
+# Claude Code fits the skill listing into 1% of the context window, in characters. Over that,
+# it drops descriptions, lowest usage first, then last in listing order (MEASURED 2026-10-05,
+# docs/PORT.md section 9). A skill reached by its description cannot trigger without one, so
+# tdd, poteto-mode and every skill it routes to (a bold name in it or its playbooks) must keep
+# theirs. This check gets its own laptop probe. A cloud session lists two fewer bundled skills,
+# and there `why` kept the description a laptop session dropped (MEASURED 2026-10-05). The
+# listing is only in the probe's transcript, not in its init event.
+listing="$(tmo 120 claude -p "say ok" --plugin-dir "$ROOT" --max-turns 1 --output-format stream-json --verbose 2>/dev/null)"
+isid="$(printf '%s\n' "$listing" | python3 -c '
+import json,sys
+for l in sys.stdin:
+    try: d=json.loads(l)
+    except Exception: continue
+    if d.get("subtype")=="init": print(d["session_id"]); break')"
+got="$(python3 - "$(find ~/.claude/projects -name "${isid:-none}.jsonl" 2>/dev/null | head -1)" "$ROOT/skills" "$SCRATCH/skill-listing.txt" <<'EOF' 2>&1
+import json,pathlib,re,sys
+skills=pathlib.Path(sys.argv[2])
+routed={"tdd", "poteto-mode"}
+for f in [skills/"poteto-mode/SKILL.md", *skills.glob("poteto-mode/playbooks/*.md")]:
+    routed|=set(re.findall(r"\*\*([a-z0-9-]+)\*\*", f.read_text()))
+routed={n for n in routed if (skills/n/"SKILL.md").exists() and not n.startswith("principle-")}
+for l in open(sys.argv[1]):
+    a=json.loads(l).get("attachment") or {}
+    if a.get("type")=="skill_listing":
+        pathlib.Path(sys.argv[3]).write_text(a["content"])
+        lines=a["content"].split("\n")
+        bare=sorted(n for n in routed if not any(x.startswith(f"- pstack-cc:{n}: ") for x in lines))
+        print(" ".join(bare) or ("none" if len(routed) > 1 else "no routed skills found in poteto-mode"))
+        break
+else: print("no skill_listing in the probe transcript")
+EOF
+)"
+eq "tdd, poteto-mode and routed skills keep descriptions" "$got" "none"
+
 # His skills chain with a BARE name ("Call the Skill tool with \"grilling\""); it must resolve
 # to this plugin's skill. A core skill lost its user-only flag so the router can call it; an
 # extra kept it, so the Skill tool must still refuse it.

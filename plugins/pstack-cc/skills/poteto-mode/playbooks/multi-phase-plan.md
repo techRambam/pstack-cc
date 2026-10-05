@@ -128,7 +128,7 @@ Each live lane runs on its own cloud VM at the PR head. Drive through `the built
 - [ ] Root's clean verdict at the exact head SHA.
 - [ ] Bugbot triage done.
 - [ ] Rebased onto current trunk after the verdict, patch-id unchanged.
-- [ ] <The owner merges (--merge, never --squash) its own PR, or the root appends it to the base-branch stack and the operator lands it bottom-up.>
+- [ ] <The owner merges (--merge, never a squash) its own PR, or the root appends it to the base-branch stack and the operator lands it bottom-up.>
 
 ## Close the program
 

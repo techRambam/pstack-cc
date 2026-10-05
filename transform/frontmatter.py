@@ -43,6 +43,12 @@ def split_fm(text):
 # that structural instead of an instruction a fresh agent can skip.
 PRELOAD = {"poteto-agent": ["pstack-cc:poteto-mode"]}
 
+# Claude Code lists every skill's description in 1% of the context window, in characters
+# (30,000 on a 1M-context Opus), and drops descriptions past that (docs/PORT.md section 9).
+# Upstream's principle descriptions spent a fifth of that. Nothing finds a principle by its
+# description: poteto-mode's Principles index says when each applies and loads it by name.
+PRINCIPLE_DESCRIPTION = '"poteto-mode principle"'
+
 changed = dropped = renamed = 0
 reminder = None
 
@@ -52,6 +58,7 @@ for base in sys.argv[1:]:
         fm, body = split_fm(raw)
         if fm is None:
             continue
+        principle = p.name == "SKILL.md" and p.parent.name.startswith("principle-")
         out, touched, dropping = [], False, False
         for line in fm.split("\n"):
             m = re.match(r"^([A-Za-z_-]+):\s*(.*)$", line)
@@ -71,6 +78,10 @@ for base in sys.argv[1:]:
                 touched = dropping = True
                 dropped += 1
                 continue
+            if key == "description" and principle:
+                out.append(f"description: {PRINCIPLE_DESCRIPTION}")
+                touched = dropping = True
+                continue
             if key == "name":
                 s = slug(val)
                 if s != val.strip():
@@ -81,8 +92,7 @@ for base in sys.argv[1:]:
         # Principles are background knowledge other skills route to ("apply the
         # **prove-it-works** principle skill"), not commands: hide them from the
         # `/` menu. Claude can still invoke them, which is the whole point.
-        if p.name == "SKILL.md" and p.parent.name.startswith("principle-") \
-                and not any(l.startswith("user-invocable:") for l in out):
+        if principle and not any(l.startswith("user-invocable:") for l in out):
             out.append("user-invocable: false")
             touched = True
         agent = p.parent.name == "agents" and p.stem in PRELOAD
