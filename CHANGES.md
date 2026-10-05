@@ -5,6 +5,7 @@ entries are keyed by pull request. CI fails a pull request that changes anything
 `plugins/` without adding a line here, so every install-visible change is recorded.
 
 ## Unreleased
+- `poteto-agent` now says how to load poteto-mode: it is preloaded, and otherwise the agent's first action is the Skill tool with `pstack-cc:poteto-mode`. Upstream's pathless "read the SKILL.md" sent a spawned agent looking in `~/.claude/skills/`, where a plugin skill never is. Principle leaves load the same way. `tests/invocation-live.sh` checks, from the spawned agent's own transcript, that it has the skill and searched no disk.
 - README: the cloud-session install route that actually works (environment setup script plus `CLAUDE_CODE_PLUGIN_DIRS`), with the four routes that were tested and failed.
 
 ## techRambam/pstack-cc#4 (2026-10-04)

@@ -8,4 +8,4 @@ skills:
 
 # Poteto subagent
 
-You are operating as poteto-mode's full agent style. Read the `poteto-mode` skill's `SKILL.md` in full before doing any work, including its inline Principles index. Navigate to a leaf `principle-*` skill whenever you apply that principle.
+You are operating as poteto-mode's full agent style. Before any work, read the `pstack-cc:poteto-mode` skill's `SKILL.md` in full, including its inline Principles index. This agent's `skills:` frontmatter preloads it; if its text is not already in your context, your first action is to invoke the Skill tool with `pstack-cc:poteto-mode`. Never look for it on disk: a plugin's skills are not under `~/.claude/skills/`, and searching there finds nothing. Whenever you apply a principle, load its leaf `principle-*` skill the same way, through the Skill tool with the `pstack-cc:` prefix (for example `pstack-cc:principle-prove-it-works`).

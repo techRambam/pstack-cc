@@ -58,6 +58,7 @@ Kept unchanged: `paths`, which means the same thing here.
 | `~/.cursor/plugins/` | `~/.claude/plugins/`. |
 | Cursor cloud agents (`environment: "cloud"`, `cloud_base_branch`, the Cursor dashboard) | A background `Agent` with `isolation: "worktree"`. This is not a drop-in replacement for one VM per PR, so `orchestrate` and both `autopilot-*` playbooks are still **the least faithful part of this port**. |
 | `readonly: false` ("agent mode", so MCP stays available) | Dropped. Claude Code subagents get MCP tools without a flag. |
+| A skill read by name ("Read the `poteto-mode` skill's `SKILL.md`"), which Cursor resolves through `.cursor/skills/` | `poteto-agent` preloads `pstack-cc:poteto-mode` through `skills:` frontmatter, and its body names the Skill tool as the fallback and forbids a disk search. `MEASURED:` a poteto-agent spawned 2026-09-28 from a copy without the preload looked for `~/.claude/skills/poteto-mode/SKILL.md`, found nothing, and worked without the skill. A plugin skill has no fixed path, so the Skill tool is the one route that always resolves. |
 
 ## 4. Model slugs
 

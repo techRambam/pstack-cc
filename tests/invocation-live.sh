@@ -45,5 +45,34 @@ eq "read-only agent has no Write"                "$(printf '%s' "$got" | grep -o
 eq "read-only agent cannot spawn agents"         "$(printf '%s' "$got" | grep -o 'HAS_AGENT=[a-z]*')" "HAS_AGENT=no"
 eq "read-only agent can still read"              "$(printf '%s' "$got" | grep -o 'HAS_READ=[a-z]*')"  "HAS_READ=yes"
 
+# poteto-agent must start with poteto-mode in hand. Upstream's body named the skill but no
+# path; a spawned agent searched ~/.claude/skills/, found nothing and worked without it.
+# Judged from the subagent's own transcript, not its answer: the preload shows up as an
+# injected <command-name>pstack-cc:poteto-mode</command-name> turn, the fallback as a Skill
+# call, and a disk search as any tool call that names poteto-mode.
+out="$(timeout 300 claude -p 'Spawn exactly one subagent with the Agent tool, subagent_type "pstack-cc:poteto-agent", model haiku, with this task: "Reply with the text of the first second-level (##) heading in the poteto-mode SKILL.md." Wait for its result, then reply with that heading only.' \
+        --plugin-dir "$ROOT" --max-turns 10 --output-format stream-json --verbose 2>/dev/null)"
+sid="$(printf '%s\n' "$out" | python3 -c '
+import json,sys
+for l in sys.stdin:
+    try: d=json.loads(l)
+    except Exception: continue
+    if d.get("subtype")=="init": print(d["session_id"]); break')"
+sub="$(find ~/.claude/projects -path "*${sid:-none}/subagents/*.jsonl" 2>/dev/null | head -1)"
+how="$(python3 - "$sub" <<'EOF' 2>/dev/null
+import json,sys
+loaded=searched=False
+for l in open(sys.argv[1]):
+    d=json.loads(l); c=(d.get("message") or {}).get("content")
+    for x in c if isinstance(c,list) else []:
+        if x.get("type")=="text" and "<command-name>pstack-cc:poteto-mode</command-name>" in x["text"]: loaded=True
+        if x.get("type")=="tool_use":
+            if x["name"]=="Skill" and x["input"].get("skill")=="pstack-cc:poteto-mode": loaded=True
+            elif "poteto-mode" in json.dumps(x["input"]): searched=True
+print("LOADED" if loaded and not searched else "SEARCHED" if searched else "MISSING")
+EOF
+)"
+eq "poteto-agent has poteto-mode without a disk search" "$how" "LOADED"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
