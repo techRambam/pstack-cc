@@ -5,6 +5,7 @@ entries are keyed by pull request. CI fails a pull request that changes anything
 `plugins/` without adding a line here, so every install-visible change is recorded.
 
 ## Unreleased
+- The forbid gate's `--squash` check now runs. `import.sh` passed each pattern to grep bare, so `--squash` was parsed as an option, grep exited 2, and `2>/dev/null || true` hid it. Patterns now go in with `-e`, and a grep error fails the import. With the gate live, the `squash-merges` rewrite in the poteto-mode playbooks says "never a squash" instead of naming the `--squash` flag it forbids.
 - `poteto-agent` now says how to load poteto-mode: it is preloaded, and otherwise the agent's first action is the Skill tool with `pstack-cc:poteto-mode`. Upstream's pathless "read the SKILL.md" sent a spawned agent looking in `~/.claude/skills/`, where a plugin skill never is. Principle leaves load the same way. `tests/invocation-live.sh` checks, from the spawned agent's own transcript, that it has the skill and searched no disk.
 - README: the cloud-session install route that actually works (environment setup script plus `CLAUDE_CODE_PLUGIN_DIRS`), with the four routes that were tested and failed.
 

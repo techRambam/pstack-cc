@@ -109,6 +109,11 @@ EXEMPT="$ROOT/transform/allow-cursor.txt"
 hits=0
 while IFS= read -r pat; do
   [ -z "$pat" ] && continue
+  # -e: without it a pattern starting with "-" (--squash) is parsed as an option,
+  # and grep exits 2 having searched nothing. Exit 1 is "no match"; 2 is an error.
+  rc=0
+  matches="$(grep -rEn -e "$pat" "$PLUGIN/skills" "$PLUGIN/agents")" || rc=$?
+  [ "$rc" -le 1 ] || die "grep failed on forbid pattern '$pat' (exit $rc)"
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     file="${line%%:*}"
@@ -119,7 +124,7 @@ while IFS= read -r pat; do
     case "$content" in [[:space:]]*\>*|\>*) continue ;; esac
     printf '  \033[1;33m%s\033[0m  %s\n' "$pat" "$rel"
     hits=$((hits+1))
-  done < <(grep -rEn "$pat" "$PLUGIN/skills" "$PLUGIN/agents" 2>/dev/null || true)
+  done <<< "$matches"
 done < "$ROOT/transform/forbid.txt"
 
 echo
