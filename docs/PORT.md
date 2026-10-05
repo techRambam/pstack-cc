@@ -43,6 +43,11 @@ explicit ("Use for /how"), so the skills don't trigger on unrelated requests. `m
 keeps the flag because it has side effects and nothing routes to it. `tests/lint-skills.py`
 fails on the key anywhere else.
 
+**Principle descriptions shrink to "poteto-mode principle".** Claude Code drops skill
+descriptions once the listing outgrows its budget (section 9), and upstream's 24 principle
+descriptions spent a fifth of it. poteto-mode's Principles index already says when each one
+applies and loads it by name. Nothing read the listing's copy.
+
 Kept unchanged: `paths`, which means the same thing here.
 
 ## 3. Mechanisms with no Claude Code equivalent — what replaced them
@@ -213,7 +218,20 @@ the dead-rule audit catches an upstream reword of their anchors.
 - `setup-matt-pocock-skills` writes its pointer block into CLAUDE.md or AGENTS.md, never both.
   A repo read by both harnesses needs one to point at the other.
 - Matt's own plugin must be off wherever pstack-cc is on (README). Nothing enforces it.
-- `UNVERIFIED:` the skill listing has a character budget. A session measured on 2026-10-05,
-  before this change, already listed 41 of 49 pstack-cc skills without their description.
-  The router names its targets, so routing does not depend on descriptions, but a skill
-  reached only by its description may not trigger.
+- The skill listing has a character budget, and a crowded install overflows it. `MEASURED:`
+  (2026-10-05, from their source) Claude Code 2.1.274 and 2.1.286 size it as context window
+  × bytes per token × `skillListingBudgetFraction` (default 0.01). That is 30,000 characters
+  on a 1M-context Opus 5.x, which counts 3 bytes per token. Over budget, bundled skills keep
+  their descriptions and every other skill drops to its bare name. Descriptions then return
+  greedily by usage score (`skillUsage` in `~/.claude.json`, halving weekly), with ties in
+  listing order. A replay of that rule reproduced two recorded listings line for line (99
+  and 95 skills). pstack-cc is the largest contributor, 15,482 characters for its 64 listed
+  skills before this change. Principles now list as "poteto-mode principle" (section 2),
+  which saves 4,297. Computed from the recorded listings, the author's full listing is still
+  37,410 characters. `INFERRED:` from the replay, in the desktop app's order, where
+  pstack-cc comes after every other plugin, 21 routed skills still list bare, `tdd` and
+  `diagnosing-bugs` among them. A user setting closes the gap. Set
+  `"skillListingBudgetFraction": 0.013` in `~/.claude/settings.json`, or disable unused
+  skills. A plugin can do neither. `tests/invocation-live.sh` checks the routed skills in a
+  laptop `claude -p` session, where `--plugin-dir` loads pstack-cc ahead of installed
+  plugins, so it cannot see the desktop app's order.

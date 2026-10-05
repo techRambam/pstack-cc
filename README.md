@@ -123,6 +123,14 @@ dropped from every skill except `make-bot-ui` and Matt Pocock's unrouted extras 
 so the skills stay out of unrelated requests. The 24 `principle-*` skills are
 `user-invocable: false` instead: other skills route to them, but they stay out of your `/` menu.
 
+Claude Code gives the skill listing 1% of the context window, 30,000 characters on a
+1M-context Opus. A listing over that loses descriptions, least-used skills first, and those
+skills show by name only. This plugin lists 64 skills in 11,185 characters. With a few other
+plugins installed the listing overflows, and a skill reached only by its description, such as
+`tdd`, can stop triggering. Add `"skillListingBudgetFraction": 0.013` to
+`~/.claude/settings.json`, or disable skills you do not use. `docs/PORT.md` section 9 has the
+measurements.
+
 ### Updating an install
 
 `plugin.json` deliberately has **no `version`**. Claude Code keys its plugin cache by version,
