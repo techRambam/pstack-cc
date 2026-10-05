@@ -5,6 +5,7 @@ entries are keyed by pull request. CI fails a pull request that changes anything
 `plugins/` without adding a line here, so every install-visible change is recorded.
 
 ## Unreleased
+- The forbid gate's `--squash` check now runs. `import.sh` passed each pattern to grep bare, so `--squash` was parsed as an option, grep exited 2, and `2>/dev/null || true` hid it. Patterns now go in with `-e`, and a grep error fails the import. With the gate live, the `squash-merges` rewrite in the poteto-mode playbooks says "never a squash" instead of naming the `--squash` flag it forbids.
 - Matt Pocock's skills join the plugin as a second pinned upstream (`mattpocock/skills` @ `4588b32`), split by phase: his skills decide what to build with you (`grill-with-docs`, `grilling`, `domain-modeling`, `to-spec`, `to-tickets`, `wayfinder`), and pstack's playbooks build it autonomously. `poteto-mode` routes to them. 18 skills imported: 14 core, 4 unrouted extras (`triage`, `course`, `wizard`, `to-questionnaire`). 8 excluded where pstack covers the job. `transform/mattpocock.tsv` records each decision.
 - `tdd` merges both packs: test-first vertical slices for new behavior, the regression gate for bugs. Seams come from the spec or ticket while building, never from a mid-build question.
 - The Bug fix playbook builds a hard bug's feedback loop with `diagnosing-bugs` before hypothesising.

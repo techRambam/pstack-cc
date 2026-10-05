@@ -175,10 +175,12 @@ the auto-arm variable, the `watch-pr` guard and `panelist`'s key lookup, offline
 `.cursor/`, `cursor-agent`, `CURSOR_*`, `cursor-team-kit`, `pstack-models.mdc`,
 `api2.cursor.sh`, every model slug, `generalPurpose`, `--squash`, `is_background`.
 
-A hit fails `import.sh` with a non-zero exit. Blockquoted port notes are exempt, so a
-`> **Ported from upstream.**` paragraph may name what it replaced without tripping the gate.
-That exemption is scoped to blockquotes deliberately — exempting whole files would let a real
-regression through.
+A hit fails `import.sh` with a non-zero exit, and so does a pattern grep cannot run. Each
+pattern goes in with `-e`: bare, `--squash` was parsed as an option and that check never ran.
+
+Blockquoted port notes are exempt, so a `> **Ported from upstream.**` paragraph may name what
+it replaced without tripping the gate. That exemption is scoped to blockquotes deliberately —
+exempting whole files would let a real regression through.
 
 ## 9. Second upstream: Matt Pocock's skills
 

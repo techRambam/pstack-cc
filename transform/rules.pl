@@ -27,7 +27,7 @@ s{\bgrok-4\.6-fast\b}{sonnet}g;
 # --- merge policy: the house rule is a merge commit, never a squash ----
 s{gh pr merge (\S+) --squash}{gh pr merge $1 --merge}g;
 s{origin pr merge (\S+) --squash}{gh pr merge $1 --merge}g;
-s{\bsquash-merges\b}{merges (--merge, never --squash)}g;
+s{\bsquash-merges\b}{merges (--merge, never a squash)}g;
 s{\bsquash it with\b}{land it with}g;
 
 # --- Cursor built-ins -> Claude Code equivalents -----------------------
