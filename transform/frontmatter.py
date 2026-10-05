@@ -20,6 +20,11 @@ DROP = {"mode", "icon", "color", "reminder"}          # Cursor-only skill keys
 DROP |= {"disable-model-invocation"}
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "pstack-cc"
+# Matt's skills that nothing in pstack routes to keep his own invocation flags: the
+# routing argument above is the only reason to drop them, and it does not apply.
+KEEP_FLAGS = {line.split("\t")[2] for line in
+              (ROOT / "transform" / "mattpocock.tsv").read_text().splitlines()
+              if line.startswith("extra\t")}
 
 def slug(v):
     return re.sub(r"[^a-z0-9]+", "-", v.strip().lower()).strip("-")
@@ -47,17 +52,23 @@ for base in sys.argv[1:]:
         fm, body = split_fm(raw)
         if fm is None:
             continue
-        out, touched = [], False
+        out, touched, dropping = [], False, False
         for line in fm.split("\n"):
             m = re.match(r"^([A-Za-z_-]+):\s*(.*)$", line)
+            if dropping and not m:
+                continue        # a dropped key's value: nested, blank, or `- ` list lines
+            dropping = False
             if not m:
                 out.append(line)
                 continue
             key, val = m.group(1), m.group(2)
             if key == "reminder" and "poteto-mode" in str(p):
                 reminder = val.strip().strip('"').strip("'")
+            if key == "disable-model-invocation" and p.parent.name in KEEP_FLAGS:
+                out.append(line)
+                continue
             if key in DROP:
-                touched = True
+                touched = dropping = True
                 dropped += 1
                 continue
             if key == "name":

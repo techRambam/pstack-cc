@@ -14,7 +14,7 @@ eq() { # name, got, want
   else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$1" "$3" "$2"; fi
 }
 
-CFG="$(mktemp -d)"; PROJ="$(mktemp -d)"
+CFG="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; PROJ="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2
 cloud() { printf '{"session_id":"s","source":"startup"}' \
   | env -u OPENAI_API_KEY CLAUDE_CODE_REMOTE=true CLAUDE_CONFIG_DIR="$CFG" CLAUDE_PROJECT_DIR="$PROJ" "$@" bash "$HOOK" 2>/dev/null; }
 
@@ -39,7 +39,7 @@ printf 'not json' | CLAUDE_CODE_REMOTE=true CLAUDE_CONFIG_DIR="$CFG" bash "$HOOK
 eq "malformed stdin exits 0"           "$?" "0"
 
 # --- auto-arm: the environment-variable gate --------------------------------
-ACFG="$(mktemp -d)"
+ACFG="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2
 arm() { printf '{"session_id":"envsid","source":"%s"}' "${1:-startup}" | CLAUDE_CONFIG_DIR="$ACFG" "${@:2}" bash "$ARM"; }
 eq "auto-arm: no file, no var: off"    "$(arm startup env -u PSTACK_CC_ALWAYS_ON; [ -f "$ACFG/pstack-cc/state/envsid.mode" ] && echo yes || echo no)" "no"
 eq "auto-arm: var=0 stays off"         "$(arm startup env PSTACK_CC_ALWAYS_ON=0; [ -f "$ACFG/pstack-cc/state/envsid.mode" ] && echo yes || echo no)" "no"
@@ -59,7 +59,7 @@ fi
 
 # --- panelist: keys from the environment ----------------------------------------
 PL="$ROOT/bin/panelist"
-PCFG="$(mktemp -d)"
+PCFG="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2
 nocodex() { env PATH="/usr/bin:/bin" CLAUDE_CONFIG_DIR="$PCFG" "$@"; }
 # load_env() without running the CLI: panelist is a script, not a module.
 gemkey() { nocodex "$@" python3 -c "

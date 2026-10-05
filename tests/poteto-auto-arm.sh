@@ -6,7 +6,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARM="$ROOT/plugins/pstack-cc/hooks/poteto-auto-arm.sh"
 PIN="$ROOT/plugins/pstack-cc/hooks/poteto-mode.sh"
-CLAUDE_CONFIG_DIR="$(mktemp -d)"; export CLAUDE_CONFIG_DIR
+CLAUDE_CONFIG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; export CLAUDE_CONFIG_DIR
 CFG="$CLAUDE_CONFIG_DIR/pstack-cc"
 SID="test-session-$$"
 pass=0; fail=0
