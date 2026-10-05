@@ -123,3 +123,9 @@ s{the background agent's status in the Cursor dashboard}{the background agent's 
 # --- against Claude plan limits. reflect's tooling reviewer needs files and MCP,
 # --- which a panelist seat does not have, so that one stays an Anthropic agent.
 s{\| `reflect tooling` \| `gpt-5\.6-sol` \|}{| `reflect tooling` | `opus` |}g;
+
+# --- poteto-agent: upstream says "Read the `poteto-mode` skill's SKILL.md" with no path,
+# --- which in Cursor resolves through .cursor/skills/. A plugin skill here has no fixed
+# --- path, and a poteto-agent spawned 2026-09-28 looked for ~/.claude/skills/poteto-mode/,
+# --- found nothing and worked without it. Name the Skill tool, the one route that resolves.
+s{Read the `poteto-mode` skill's `SKILL\.md` in full before doing any work, including its inline Principles index\. Navigate to a leaf `principle-\*` skill whenever you apply that principle\.}{Before any work, read the `pstack-cc:poteto-mode` skill's `SKILL.md` in full, including its inline Principles index. This agent's `skills:` frontmatter preloads it; if its text is not already in your context, your first action is to invoke the Skill tool with `pstack-cc:poteto-mode`. Never look for it on disk: a plugin's skills are not under `~/.claude/skills/`, and searching there finds nothing. Whenever you apply a principle, load its leaf `principle-*` skill the same way, through the Skill tool with the `pstack-cc:` prefix (for example `pstack-cc:principle-prove-it-works`).}g;

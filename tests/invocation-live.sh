@@ -45,5 +45,13 @@ eq "read-only agent has no Write"                "$(printf '%s' "$got" | grep -o
 eq "read-only agent cannot spawn agents"         "$(printf '%s' "$got" | grep -o 'HAS_AGENT=[a-z]*')" "HAS_AGENT=no"
 eq "read-only agent can still read"              "$(printf '%s' "$got" | grep -o 'HAS_READ=[a-z]*')"  "HAS_READ=yes"
 
+# poteto-agent must start with poteto-mode in hand. Upstream's body named the skill but no
+# path; a spawned agent searched ~/.claude/skills/, found nothing and worked without it.
+got="$(timeout 300 claude -p 'Spawn exactly one subagent with the Agent tool, subagent_type "pstack-cc:poteto-agent", in the foreground, model haiku, with this task: "Reply with the exact text of the description line in the frontmatter of the poteto-mode SKILL.md, then one word for how you obtained it: PRELOADED (in your context at start), SKILL_TOOL, READ_FILE or NOT_FOUND." Then reply with one line: HOW=<that word>.' \
+        --plugin-dir "$ROOT" --max-turns 6 --output-format text 2>/dev/null | tail -1)"
+how="$(printf '%s' "$got" | grep -o -E 'HOW=[A-Z_]+' | head -1)"
+case "$how" in HOW=PRELOADED|HOW=SKILL_TOOL) how=HOW=OK ;; esac
+eq "poteto-agent has poteto-mode without a disk search" "$how" "HOW=OK"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
