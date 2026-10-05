@@ -48,7 +48,7 @@ log "mattpocock/skills at $(git -C "$MATT" rev-parse --short HEAD)"
 
 # --- 2. clean copy ------------------------------------------------------
 log "copying skills/ agents/"
-rm -rf "$PLUGIN/skills" "$PLUGIN/agents"
+rm -rf "$PLUGIN/skills" "$PLUGIN/agents" "$PLUGIN/LICENSE.mattpocock"
 cp -R "$SRC/skills" "$PLUGIN/skills"
 cp -R "$SRC/agents" "$PLUGIN/agents"
 cp "$SRC/LICENSE" "$ROOT/LICENSE.upstream"
@@ -113,7 +113,11 @@ if [ -d "$ROOT/own" ]; then
   while IFS= read -r -d '' f; do
     rel="${f#./}"
     [ -e "$SRC/$rel" ] && die "own/$rel now exists upstream too -- move it to overlay/ or rename it"
-    [ -e "$PLUGIN/$rel" ] && die "own/$rel would overwrite a generated file (pstack, mattpocock or overlay/) -- rename it"
+    # Only skills/ and agents/ are regenerated each run, so only there does an existing file
+    # mean a collision; elsewhere it is this file's own copy from the previous run.
+    case "$rel" in skills/*|agents/*)
+      [ -e "$PLUGIN/$rel" ] && die "own/$rel would overwrite a generated file (pstack, mattpocock or overlay/) -- rename it" ;;
+    esac
     mkdir -p "$PLUGIN/$(dirname "$rel")"
     cp "$ROOT/own/$rel" "$PLUGIN/$rel"
     printf '    own: %s\n' "$rel"

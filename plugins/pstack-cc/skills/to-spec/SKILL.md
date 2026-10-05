@@ -60,7 +60,7 @@ Exception: if a prototype produced a snippet that encodes a decision more precis
 A list of testing decisions that were made. Include:
 
 - A description of what makes a good test (only test external behavior, not implementation details)
-- Which modules will be tested
+- Which modules will be tested, and the seams agreed with the user in step 2. The build phase tests at these.
 - Prior art for the tests (i.e. similar types of tests in the codebase)
 
 ## Out of Scope

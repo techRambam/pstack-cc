@@ -17,14 +17,38 @@ PLUGIN = ROOT / "plugins" / "pstack-cc"
 MANIFEST = ROOT / "transform" / "mattpocock.tsv"
 
 # (target file under plugins/pstack-cc, old text, new text, expected matches).
-# Each edit exists because the text it replaces points at a skill this port excludes or renames.
+# Each edit exists because the text it replaces points at a skill this port excludes or
+# renames, or because the phase split needs a slot his templates lack.
 EDITS = [
+    # His prototype skill is excluded. The playbook keeps the sketch out of production
+    # source; the map's ticket is HITL, so the human still picks the direction.
     ("skills/wayfinder/SKILL.md",
      'by calling the Skill tool with "prototype"',
-     "by following the Prototype playbook of the **poteto-mode** skill", 1),
+     "by building a throwaway per the Prototype playbook of the **poteto-mode** skill, "
+     "committed to a throwaway branch that the ticket links. The human picks the direction, "
+     "and nothing is handed to Feature from inside the map", 1),
     ("skills/course/SKILL.md", "name: teach", "name: course", 1),
     ("skills/course/agents/openai.yaml", 'display_name: "Teach"', 'display_name: "Course"', 1),
+    ("skills/tdd/agents/openai.yaml", 'short_description: "Test-driven red-green-refactor"',
+     'short_description: "Test-first slices and regression tests"', 1),
+    # Seams are agreed while deciding and read while building (tdd), so the spec and both
+    # ticket templates carry them.
+    ("skills/to-spec/SKILL.md", "- Which modules will be tested\n",
+     "- Which modules will be tested, and the seams agreed with the user in step 2. "
+     "The build phase tests at these.\n", 1),
+    ("skills/to-tickets/SKILL.md", "**Status:** ready-for-agent",
+     "**Seams under test:** the seams from the spec's Testing Decisions that this ticket's "
+     "tests sit at, or \"None named\".\n\n**Status:** ready-for-agent", 1),
+    ("skills/to-tickets/SKILL.md", "## Acceptance criteria\n\n- [ ] Criterion 1",
+     "## Seams under test\n\nThe seams from the parent spec's Testing Decisions that this "
+     "ticket's tests sit at, or \"None named\".\n\n## Acceptance criteria\n\n- [ ] Criterion 1", 1),
 ]
+
+# Codex's counterpart of disable-model-invocation. Routed skills drop the Claude flag
+# (transform/frontmatter.py), so they drop this one too, or Codex never shows them to the
+# model and the router's targets do not exist there. Extras keep both.
+CODEX_USER_ONLY = "allow_implicit_invocation: false"
+CODEX_IMPLICIT = "allow_implicit_invocation: true"
 
 
 def manifest():
@@ -66,6 +90,10 @@ def main():
             if not dst.exists():
                 problems.append(f"merge row {r['source']}: pstack has no skills/{r['target']} to merge into")
                 continue
+            if not (ROOT / "overlay" / "skills" / r["target"] / "SKILL.md").exists():
+                problems.append(f"merge row {r['source']}: no overlay/skills/{r['target']}/SKILL.md "
+                                f"replaces both packs' SKILL.md, so pstack's would ship unmerged")
+                continue
             for f in sorted(src.rglob("*")):
                 rel = f.relative_to(src)
                 if f.is_dir() or rel == pathlib.Path("SKILL.md"):
@@ -79,6 +107,11 @@ def main():
             merged += 1
         elif r["role"] != "exclude":
             problems.append(f"unknown role {r['role']!r} for {r['source']}")
+            continue
+        yaml = dst / "agents" / "openai.yaml"
+        if r["role"] in ("core", "merge") and yaml.exists():
+            text = yaml.read_text(encoding="utf-8")
+            yaml.write_text(text.replace(CODEX_USER_ONLY, CODEX_IMPLICIT), encoding="utf-8")
 
     for rel, old, new, want in EDITS:
         p = PLUGIN / rel

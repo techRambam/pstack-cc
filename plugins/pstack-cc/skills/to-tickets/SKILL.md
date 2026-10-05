@@ -73,6 +73,8 @@ Do NOT close or modify any parent issue.
 
 **Blocked by:** the numbers/titles of the tickets that gate this one, or "None (can start immediately)".
 
+**Seams under test:** the seams from the spec's Testing Decisions that this ticket's tests sit at, or "None named".
+
 **Status:** ready-for-agent
 
 - [ ] Acceptance criterion 1
@@ -89,6 +91,10 @@ A reference to the parent issue on the tracker (if the source was an existing is
 ## What to build
 
 The end-to-end behaviour this ticket makes work, from the user's perspective, not layer-by-layer implementation.
+
+## Seams under test
+
+The seams from the parent spec's Testing Decisions that this ticket's tests sit at, or "None named".
 
 ## Acceptance criteria
 

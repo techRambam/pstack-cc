@@ -1,6 +1,7 @@
 # Port record — pstack (Cursor) → pstack-cc (Claude Code)
 
 Upstream: `cursor/plugins` @ `e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a`, `pstack/` only.
+Second upstream, Matt Pocock's skills: section 9.
 Every decision below is implemented in `transform/` or `overlay/`, never by hand-editing
 generated output.
 
@@ -32,7 +33,7 @@ Plugin agents are dispatched by their namespaced name, `pstack-cc:poteto-agent` 
 reference was slugged. It was not: it still spawned `subagent_type: "Comment Sicko"`, which
 resolves to nothing. The forbid gate now rejects the bare and display forms.
 
-**`disable-model-invocation` is dropped**, except on `make-bot-ui`. An earlier version kept it
+**`disable-model-invocation` is dropped**, except on `make-bot-ui` and Matt Pocock's unrouted extras (section 9). An earlier version kept it
 on 49 skills on the theory that it only kept them out of automatic routing. In Claude Code it
 does more than that: when Claude calls a skill that carries it, the Skill tool **refuses** the
 call ([docs](https://code.claude.com/docs/en/skills)). Upstream's skills invoke one another:
@@ -159,7 +160,7 @@ What differs inside one, all `MEASURED:` in a cloud container:
 | No desktop browser pane; Chromium at `/opt/pw-browsers` | `mcp__Claude_Browser__*` references dead | the hook names Playwright |
 
 The skills themselves are **not** rewritten for the cloud. One `SessionStart` note costs a few
-hundred tokens once per session and keeps fifty generated files identical to upstream; forking
+hundred tokens once per session and keeps the generated files identical to upstream; forking
 them would turn every upstream sync into a merge. `tests/cloud-session.sh` covers the hook,
 the auto-arm variable, the `watch-pr` guard and `panelist`'s key lookup, offline.
 
@@ -196,8 +197,11 @@ the dead-rule audit catches an upstream reword of their anchors.
 | Matt's `pr` template and the Opening a PR playbook prescribe different PR bodies | `pr` excluded. |
 | Matt's `code-review` clashes with the built-in `code-review` by name | Excluded. `interrogate` and `blast-radius` review here. |
 | `unslop` would strip the emoji markers and coined terms ("frontier", "tracer bullet") Matt's templates depend on | The prose trigger in `poteto-mode` now says grilling rounds, specs, tickets and glossaries keep their own skills' templates and terms. |
-| Matt's user-only skills (`disable-model-invocation`) cannot be routed to | Dropped on the core skills, as for pstack's own. Kept on the extras (`triage`, `course`, `to-questionnaire`), which nothing routes to. |
-| `pr` carries a `metadata` key, which a plugin skill may not have | Dropped by `transform/frontmatter.py`, nested lines included. The credit ships in the skill's `CREDITS.md`. |
+| Matt's user-only skills (`disable-model-invocation`, and `allow_implicit_invocation: false` in Codex's `agents/openai.yaml`) cannot be routed to | Both dropped on the core and merged skills, as for pstack's own. `MEASURED:` before this, Codex never showed its model 8 routed skills (`codex debug prompt-input`). Both kept on the extras (`triage`, `course`, `to-questionnaire`), which nothing routes to. The lint fails when the two harnesses disagree. |
+| Deciding had no playbook, while poteto-mode opens every task with a playbook's steps | `own/skills/poteto-mode/playbooks/deciding.md`, listed before Feature. It ends at approved tickets; building waits for the user. |
+| Agreed seams had no slot in the spec or ticket templates | Asserted edits add Seams under test to `to-spec`'s Testing Decisions and both `to-tickets` templates; `tdd` reads the ticket's, else the spec's. |
+| The build phase never read or closed the ticket | The router line for building says to read it with `gh issue view`, verify against its acceptance criteria, and close it from the PR. |
+| The budget hook allows autopilot only when the user names it | A ticket queue goes to Feature per ticket in blocking order; Autopilot-stack only when named. |
 
 **Known gaps.**
 - `budget.sh` caps fan-out at 3 subagents per step on `balanced`. That cap also applies to
@@ -205,6 +209,13 @@ the dead-rule audit catches an upstream reword of their anchors.
 - `setup-matt-pocock-skills` and its dependents name `/setup-matt-pocock-skills` without the
   `pstack-cc:` prefix. `UNVERIFIED:` whether a bare slash name resolves to a plugin skill;
   the Skill tool loads it either way.
-- Codex reads this plugin through its own marketplace entry. Matt's per-skill
-  `agents/openai.yaml` files ship unchanged, so his skills keep their Codex metadata.
-  pstack's skills have none.
+- Codex reads this plugin through its marketplace entry (`MEASURED:` `codex plugin
+  marketplace add` and `codex plugin add pstack-cc@pstack-cc` install it). Matt's per-skill
+  `agents/openai.yaml` files ship with the invocation policy above. pstack's skills have none.
+- `setup-matt-pocock-skills` writes its pointer block into CLAUDE.md or AGENTS.md, never both.
+  A repo read by both harnesses needs one to point at the other.
+- Matt's own plugin must be off wherever pstack-cc is on (README). Nothing enforces it.
+- `UNVERIFIED:` the skill listing has a character budget. A session measured on 2026-10-05,
+  before this change, already listed 41 of 49 pstack-cc skills without their description.
+  The router names its targets, so routing does not depend on descriptions, but a skill
+  reached only by its description may not trigger.

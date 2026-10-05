@@ -7,6 +7,8 @@ description: "Test-driven development for new behavior and for bug fixes. Use wh
 
 TDD is the red to green loop. This skill covers two jobs that share one loop. Building new behavior test-first, one vertical slice at a time. Locking down a bug with a regression test that fails before the fix and passes after it.
 
+Every section below applies on every cycle. Consult them before and during the loop, not after.
+
 When exploring the codebase, read `GLOSSARY.md` (if it exists) so test names and interface vocabulary match the project's domain language, and respect ADRs in the area you're touching.
 
 ## What a good test is
@@ -21,16 +23,16 @@ A **seam** is the public boundary you test at, the interface where you observe b
 
 Where the seams come from depends on the phase.
 
-- **Deciding what to build.** Agree the seams with the user while grilling, and record them in the spec or ticket (the **to-spec** and **to-tickets** skills).
-- **Building from a spec or ticket.** Take the seams it names. If it names none, choose them yourself, write them down before the first test, and report them with the result. Do not stop to ask.
+- **Deciding what to build.** Agree the seams with the user while grilling. The **to-spec** skill records them in the spec's Testing Decisions, and the **to-tickets** skill copies each ticket's share under Seams under test.
+- **Building from a spec or ticket.** Take the seams under test that the ticket names, else those in its parent spec's Testing Decisions. If neither names any, choose them yourself, write them down before the first test, and report them with the result. Do not stop to ask.
 
 When the shape of the interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), call the Skill tool with "codebase-design" for the vocabulary. It is a reference to consult, not a session to run.
 
 ## Anti-patterns
 
 - **Implementation-coupled.** Mocks internal collaborators, tests private methods, or verifies through a side channel (querying the database instead of using the interface). The tell is a test that breaks on a refactor while behavior hasn't changed.
-- **Tautological.** The assertion recomputes the expected value the way the code does (`expect(add(a, b)).toBe(a + b)`, a snapshot derived by hand the same way, a constant asserted equal to itself), so it passes by construction. Expected values come from an independent source of truth, a known-good literal, a worked example, or the spec.
-- **Horizontal slicing.** Writing all tests first, then all implementation. Bulk tests verify imagined behavior and commit to test structure before you understand the implementation. Work in **vertical slices** instead. One test, one implementation, repeat, each test a **tracer bullet** that responds to what the last cycle taught you.
+- **Tautological.** The assertion recomputes the expected value the way the code does (`expect(add(a, b)).toBe(a + b)`, a snapshot derived by hand the same way, a constant asserted equal to itself), so it passes by construction and can never disagree with the code. Expected values must come from an independent source of truth, a known-good literal, a worked example, or the spec.
+- **Horizontal slicing.** Writing all tests first, then all implementation. Bulk tests verify imagined behavior, go insensitive to real changes, and commit to test structure before you understand the implementation. Work in **vertical slices** instead. One test, one implementation, repeat, each test a **tracer bullet** that responds to what the last cycle taught you.
 
 ## Building new behavior
 
@@ -69,3 +71,13 @@ Report the evidence, not just the outcome.
 - The failing-before test or executable check, and the failure it produced.
 - The passing-after run and any nearby validation.
 - If failing-before evidence could not be shown, why, and the closest check used instead.
+
+## Capture-back
+
+A run that teaches something durable about testing (a seam that misled, a missing guardrail, a convention this project follows) is worth keeping only if you write it down before you finish.
+
+- A convention of the project you are working in goes in that project's own docs, such as its `CODING_STANDARDS.md` or the glossary and ADRs that the **domain-modeling** skill keeps.
+- A rule this skill states wrongly, or one it lacks, is a defect in the plugin. Report it at https://github.com/techRambam/pstack-cc/issues with the run that showed it. Do not edit the installed copy, which the next update overwrites.
+- A claim this skill got wrong gets its line fixed in the pstack-cc repo (`overlay/skills/tdd/SKILL.md`, then `./import.sh`), not a caveat appended under it.
+
+Stamp non-obvious claims `[verified YYYY-MM-DD vs <source>]`.

@@ -9,7 +9,7 @@ pass=0; fail=0
 eq() { if [ "$2" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
        else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$1" "$3" "$2"; fi; }
 
-T="$(mktemp -d)"; P="$T/projects/-Users-me-app"; mkdir -p "$P/s1/subagents"
+T="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; P="$T/projects/-Users-me-app"; mkdir -p "$P/s1/subagents"
 now="$(python3 -c 'import datetime;print(datetime.datetime.now(datetime.timezone.utc).isoformat())')"
 old="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(days=30)).isoformat())')"
 turn() { # requestId model output effort timestamp

@@ -18,9 +18,6 @@ DROP = {"mode", "icon", "color", "reminder"}          # Cursor-only skill keys
 # key goes. Their descriptions are explicit ("Use for /how"), which keeps them from
 # triggering on unrelated requests.
 DROP |= {"disable-model-invocation"}
-# Matt Pocock's `pr` carries credits under `metadata`, which a plugin skill may not have.
-# The same attribution ships as the skill's CREDITS.md, so nothing is lost.
-DROP |= {"metadata"}
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "pstack-cc"
 # Matt's skills that nothing in pstack routes to keep his own invocation flags: the
@@ -57,10 +54,10 @@ for base in sys.argv[1:]:
             continue
         out, touched, dropping = [], False, False
         for line in fm.split("\n"):
-            if dropping and line[:1] in (" ", "\t"):
-                continue                                  # a dropped key's nested lines
-            dropping = False
             m = re.match(r"^([A-Za-z_-]+):\s*(.*)$", line)
+            if dropping and not m:
+                continue        # a dropped key's value: nested, blank, or `- ` list lines
+            dropping = False
             if not m:
                 out.append(line)
                 continue

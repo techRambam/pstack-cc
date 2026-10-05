@@ -46,7 +46,7 @@ browser="drive web UIs with Playwright"
 # shellcheck disable=SC2016  # the backticks below are markdown for the model, not commands
 cat <<NOTE
 pstack-cc is running in a Claude Code cloud session. Where a pstack skill or playbook assumes a local machine, use these instead:
-- GitHub: the session proxy refuses GraphQL, so \`gh pr view|list|checks|status\` and \`gh api graphql\` fail; plain \`gh api\` REST calls may work. Use the mcp__github__* tools for PRs, reviews and CI. \`scripts/watch-pr/watch-pr\` exits 69 here: to babysit or ship a PR, subscribe to its activity (subscribe_pr_activity) and let events wake the session rather than polling.
+- GitHub: the session proxy refuses GraphQL, so \`gh pr view|list|checks|status\` and \`gh api graphql\` fail; plain \`gh api\` REST calls may work. Use the mcp__github__* tools for PRs, reviews, CI and issues. \`gh issue\` uses GraphQL too, so the spec and ticket skills publish through the mcp__github__* issue tools or REST (\`gh api repos/{owner}/{repo}/issues\`). \`scripts/watch-pr/watch-pr\` exits 69 here: to babysit or ship a PR, subscribe to its activity (subscribe_pr_activity) and let events wake the session rather than polling.
 - Plugin scripts: poteto-mode's \`scripts/...\` paths are relative to $ROOT/skills/poteto-mode, so run them by absolute path. panelist is $ROOT/bin/panelist.
 - Not installed: ${missing:-nothing missing}.$( [[ "$missing" == *gt* ]] && printf ' Without gt, `orch frontier set` cannot compute a frontier.' )$( [[ "$missing" == *codex* ]] && printf ' Without codex, OpenAI panel seats need OPENAI_API_KEY.' )
 - Panel keys in the environment: ${keys:-none}. A seat whose key is missing errors; name it in the verdict table and carry on.

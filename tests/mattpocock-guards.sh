@@ -10,6 +10,10 @@
 #   merge-overwrite a merged skill's extra file would overwrite a pstack file
 #   reworded        an EDITS anchor no longer matches upstream's text
 #   tdd-drift       Matt rewrites the tdd SKILL.md the merged overlay replaces
+#   tdd-deleted     Matt deletes that SKILL.md
+#   no-overlay      a merge row has no overlay/ SKILL.md, so pstack's would ship unmerged
+#   over-match      an EDITS anchor now matches more often than expected
+# and one guarantee: routed skills become implicit in Codex, extras stay user-only.
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [ -d "$REPO/upstream-mattpocock/.git" ] && [ -d "$REPO/upstream/pstack" ] || {
@@ -24,11 +28,14 @@ check() {  # <name> <want exit> <want text> <got exit> <got output>
 }
 
 # A root in the state mattpocock.py runs in: pstack's skills copied, Matt's not yet.
+ROOTS=()
+trap 'rm -rf ${ROOTS[@]+"${ROOTS[@]}"}' EXIT
 # An explicit template: macOS mktemp ignores $TMPDIR without one. An empty R would aim
 # every write below at /, so a failed mktemp ends the run.
 fresh() {
   R="$(mktemp -d "${TMPDIR:-/tmp}/mattpocock-guards.XXXXXX")" && [ -d "$R" ] || {
     echo "mktemp failed; refusing to build a scratch root"; exit 2; }
+  ROOTS+=("$R")
   mkdir -p "$R/plugins/pstack-cc"
   cp -R "$REPO/transform" "$REPO/overlay" "$R/"
   cp -R "$REPO/upstream-mattpocock" "$R/upstream-mattpocock"
@@ -69,6 +76,21 @@ check "reworded edit anchor fails"        1 "matched 0 time(s), expected 1" "$co
 
 fresh; printf '\n- A new upstream rule.\n' >> "$R/upstream-mattpocock/skills/engineering/tdd/SKILL.md"; run_audit
 check "drift in Matt's tdd fails the audit" 1 "OVERLAY DRIFT mattpocock/skills/engineering/tdd/SKILL.md" "$code" "$out"
+
+fresh; rm "$R/upstream-mattpocock/skills/engineering/tdd/SKILL.md"; run_audit
+check "deleted Matt tdd fails the audit"  1 "MERGE mattpocock/skills/engineering/tdd/SKILL.md no longer exists" "$code" "$out"
+
+fresh; rm "$R/overlay/skills/tdd/SKILL.md"; run_import
+check "merge row with no overlay fails"   1 "no overlay/skills/tdd/SKILL.md" "$code" "$out"
+
+fresh; printf '\nAlso by calling the Skill tool with "prototype".\n' >> \
+  "$R/upstream-mattpocock/skills/engineering/wayfinder/SKILL.md"; run_import
+check "over-matched edit anchor fails"    1 "matched 2 time(s), expected 1" "$code" "$out"
+
+fresh; run_import
+y="$R/plugins/pstack-cc/skills"
+check "routed skill is implicit in Codex" 0 "allow_implicit_invocation: true" "$code" "$(cat "$y/to-spec/agents/openai.yaml")"
+check "extra stays user-only in Codex"    0 "allow_implicit_invocation: false" "$code" "$(cat "$y/triage/agents/openai.yaml")"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

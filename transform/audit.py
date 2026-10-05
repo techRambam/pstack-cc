@@ -88,6 +88,11 @@ for line in (ROOT / "transform" / "mattpocock.tsv").read_text().splitlines():
 # "upstream no longer has this file".
 if missing:
     for rel in missing:
+        if rel.startswith("mattpocock/"):
+            problems.append(f"MERGE {rel} no longer exists upstream -- Matt deleted or moved "
+                            f"the skill a merge row in transform/mattpocock.tsv folds in. Read "
+                            f"his change, then retarget or drop the row and its overlay/.")
+            continue
         problems.append(f"OVERLAY {rel} replaces a file that no longer exists upstream -- "
                         f"delete overlay/{rel} or retarget it. --accept-overlay will NOT "
                         f"silence this: the overlay is copied before this audit, so the "

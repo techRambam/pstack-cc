@@ -15,9 +15,15 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/plugins/pstack-cc"
 pass=0; fail=0
+# Model replies are searched whole, never by their last line: a reply that adds a note after
+# its answer (MEASURED 2026-10-05: a machine hook refused haiku and the model appended why)
+# would otherwise read as no answer at all. The last match wins.
+# Every raw reply is kept, so a failure can be read instead of guessed at.
+keep() { printf '%s\n' "$got" > "$SCRATCH/$1.txt"; }
+pick() { printf '%s\n' "$1" | grep -o -E "$2" | tail -1; }
 eq() { if [ "$2" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
        else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$1" "$3" "$2"; fi; }
-cd "$(mktemp -d)" || exit 1
+SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/pstack-test.XXXXXX")" || exit 2; cd "$SCRATCH" || exit 2
 # macOS ships no `timeout` (MEASURED 2026-10-05: neither timeout nor gtimeout on PATH), and
 # a missing one made every call below print nothing, so every check failed or, worse, passed
 # vacuously on an empty menu. perl's alarm survives the exec and is everywhere.
@@ -45,6 +51,8 @@ eq "cloud hook output reached the session"       "$(printf '%s' "$init" | grep -
 # Matt Pocock's skills (transform/mattpocock.tsv): core and extras register, excluded ones do not.
 eq "Matt's core skill in the / menu"             "$(field slash_commands | grep -cx 'pstack-cc:grill-with-docs')" "1"
 eq "Matt's teach ships renamed as course"        "$(field slash_commands | grep -cx 'pstack-cc:course')" "1"
+# Registered first: the refusal check below also reads REFUSED when triage is missing.
+eq "extra triage is registered"                  "$(field slash_commands | grep -cx 'pstack-cc:triage')" "1"
 eq "excluded ask-matt is absent"                 "$(field slash_commands | grep -cx 'pstack-cc:ask-matt')" "0"
 eq "excluded pr is absent"                       "$(field slash_commands | grep -cx 'pstack-cc:pr')" "0"
 
@@ -52,31 +60,39 @@ eq "excluded pr is absent"                       "$(field slash_commands | grep 
 # to this plugin's skill. A core skill lost its user-only flag so the router can call it; an
 # extra kept it, so the Skill tool must still refuse it.
 got="$(tmo 180 claude -p 'Call the Skill tool exactly once with skill "grilling" (no prefix). Then reply with only LOADED if the skill content was returned, or REFUSED if it was refused or not found.' \
-        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null | tail -1)"
-eq "a bare Matt skill name loads"                "$(printf '%s' "$got" | grep -o -E 'LOADED|REFUSED' | head -1)" "LOADED"
+        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null)"
+keep bare-grilling
+eq "a bare Matt skill name loads"                "$(pick "$got" 'LOADED|REFUSED')" "LOADED"
 got="$(tmo 180 claude -p 'Call the Skill tool exactly once with skill "pstack-cc:to-spec". Then reply with only LOADED if the skill content was returned, or REFUSED if it was refused.' \
-        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null | tail -1)"
-eq "a routed Matt skill loads"                   "$(printf '%s' "$got" | grep -o -E 'LOADED|REFUSED' | head -1)" "LOADED"
+        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null)"
+keep to-spec
+eq "a routed Matt skill loads"                   "$(pick "$got" 'LOADED|REFUSED')" "LOADED"
 got="$(tmo 180 claude -p 'Call the Skill tool exactly once with skill "pstack-cc:triage". Then reply with only LOADED if the skill content was returned, or REFUSED if it was refused.' \
-        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null | tail -1)"
-eq "an unrouted extra stays slash-only"          "$(printf '%s' "$got" | grep -o -E 'LOADED|REFUSED' | head -1)" "REFUSED"
+        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null)"
+keep triage
+eq "an unrouted extra stays slash-only"          "$(pick "$got" 'LOADED|REFUSED')" "REFUSED"
 
 got="$(tmo 180 claude -p 'Call the Skill tool exactly once with skill "pstack-cc:principle-prove-it-works". Then reply with only LOADED if the skill content was returned, or REFUSED if it was refused.' \
-        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null | tail -1)"
-eq "Skill tool loads a routed-to skill"          "$(printf '%s' "$got" | grep -o -E 'LOADED|REFUSED' | head -1)" "LOADED"
+        --plugin-dir "$ROOT" --max-turns 3 --output-format text 2>/dev/null)"
+keep principle
+eq "Skill tool loads a routed-to skill"          "$(pick "$got" 'LOADED|REFUSED')" "LOADED"
 
 got="$(tmo 300 claude -p 'Spawn exactly one subagent with the Agent tool, subagent_type "pstack-cc:read-only", model haiku, asking it to list the names of every tool it has. Then reply with one line: HAS_EDIT=yes|no HAS_WRITE=yes|no HAS_AGENT=yes|no HAS_READ=yes|no, based only on its list.' \
-        --plugin-dir "$ROOT" --max-turns 4 --output-format text 2>/dev/null | tail -1)"
-eq "read-only agent has no Edit"                 "$(printf '%s' "$got" | grep -o 'HAS_EDIT=[a-z]*')"  "HAS_EDIT=no"
-eq "read-only agent has no Write"                "$(printf '%s' "$got" | grep -o 'HAS_WRITE=[a-z]*')" "HAS_WRITE=no"
-eq "read-only agent cannot spawn agents"         "$(printf '%s' "$got" | grep -o 'HAS_AGENT=[a-z]*')" "HAS_AGENT=no"
-eq "read-only agent can still read"              "$(printf '%s' "$got" | grep -o 'HAS_READ=[a-z]*')"  "HAS_READ=yes"
+        --plugin-dir "$ROOT" --max-turns 4 --output-format text 2>/dev/null)"
+keep read-only
+eq "read-only agent has no Edit"                 "$(pick "$got" 'HAS_EDIT=[a-z]+')"  "HAS_EDIT=no"
+eq "read-only agent has no Write"                "$(pick "$got" 'HAS_WRITE=[a-z]+')" "HAS_WRITE=no"
+eq "read-only agent cannot spawn agents"         "$(pick "$got" 'HAS_AGENT=[a-z]+')" "HAS_AGENT=no"
+eq "read-only agent can still read"              "$(pick "$got" 'HAS_READ=[a-z]+')"  "HAS_READ=yes"
 
 # poteto-agent must start with poteto-mode in hand. Upstream's body named the skill but no
 # path; a spawned agent searched ~/.claude/skills/, found nothing and worked without it.
 # Judged from the subagent's own transcript, not its answer: the preload shows up as an
 # injected <command-name>pstack-cc:poteto-mode</command-name> turn, the fallback as a Skill
-# call, and a disk search as any tool call that names poteto-mode.
+# call. A search is the failure that bug produced: looking under a skills/ dir that is not
+# this plugin's, or a broad find/Glob/ls for it. Reading the plugin's own copy to quote it,
+# and the handback that carries the answer, both name poteto-mode and are neither
+# (MEASURED 2026-10-05: a preloaded agent grepped its own SKILL.md and read as SEARCHED).
 out="$(tmo 300 claude -p 'Spawn exactly one subagent with the Agent tool, subagent_type "pstack-cc:poteto-agent", model haiku, with this task: "Reply with the text of the first second-level (##) heading in the poteto-mode SKILL.md." Wait for its result, then reply with that heading only.' \
         --plugin-dir "$ROOT" --max-turns 10 --output-format stream-json --verbose 2>/dev/null)"
 sid="$(printf '%s\n' "$out" | python3 -c '
@@ -86,20 +102,24 @@ for l in sys.stdin:
     except Exception: continue
     if d.get("subtype")=="init": print(d["session_id"]); break')"
 sub="$(find ~/.claude/projects -path "*${sid:-none}/subagents/*.jsonl" 2>/dev/null | head -1)"
-how="$(python3 - "$sub" <<'EOF' 2>/dev/null
-import json,sys
+how="$(python3 - "$sub" "$ROOT" <<'EOF' 2>/dev/null
+import json,re,sys
 loaded=searched=False
+plugin=sys.argv[2]
 for l in open(sys.argv[1]):
     d=json.loads(l); c=(d.get("message") or {}).get("content")
     for x in c if isinstance(c,list) else []:
         if x.get("type")=="text" and "<command-name>pstack-cc:poteto-mode</command-name>" in x["text"]: loaded=True
-        if x.get("type")=="tool_use":
-            if x["name"]=="Skill" and x["input"].get("skill")=="pstack-cc:poteto-mode": loaded=True
-            elif "poteto-mode" in json.dumps(x["input"]): searched=True
+        if x.get("type")!="tool_use" or x["name"]=="SubagentHandback": continue
+        if x["name"]=="Skill" and x["input"].get("skill")=="pstack-cc:poteto-mode": loaded=True; continue
+        s=json.dumps(x["input"]).replace(plugin, "<plugin>")
+        if "poteto-mode" not in s: continue
+        if re.search(r"(?<!<plugin>/)skills/poteto-mode", s) or x["name"] in ("Glob","LS") or re.search(r"\b(find|ls|locate)\b", s): searched=True
 print("LOADED" if loaded and not searched else "SEARCHED" if searched else "MISSING")
 EOF
 )"
 eq "poteto-agent has poteto-mode without a disk search" "$how" "LOADED"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
+[ "$fail" -eq 0 ] || printf 'raw replies: %s\n' "$SCRATCH"
 [ "$fail" -eq 0 ]

@@ -1,6 +1,6 @@
 {
   "name": "pstack-cc",
-  "description": "pstack (Lauren Tan / cursor-plugins) adapted for Claude Code, with Matt Pocock's skills folded into the same flow: 68 skills, 23 playbooks, 24 principles. Matt's skills decide what to build with you; pstack's playbooks build and prove it.",
+  "description": "pstack (Lauren Tan / cursor-plugins) adapted for Claude Code, with Matt Pocock's skills folded into the same flow: 68 skills, 24 playbooks, 24 principles. Matt's skills decide what to build with you; pstack's playbooks build and prove it.",
   "author": {
     "name": "Adapted for Claude Code from pstack by Lauren Tan"
   },
