@@ -129,3 +129,25 @@ s{\| `reflect tooling` \| `gpt-5\.6-sol` \|}{| `reflect tooling` | `opus` |}g;
 # --- path, and a poteto-agent spawned 2026-09-28 looked for ~/.claude/skills/poteto-mode/,
 # --- found nothing and worked without it. Name the Skill tool, the one route that resolves.
 s{Read the `poteto-mode` skill's `SKILL\.md` in full before doing any work, including its inline Principles index\. Navigate to a leaf `principle-\*` skill whenever you apply that principle\.}{Before any work, read the `pstack-cc:poteto-mode` skill's `SKILL.md` in full, including its inline Principles index. This agent's `skills:` frontmatter preloads it; if its text is not already in your context, your first action is to invoke the Skill tool with `pstack-cc:poteto-mode`. Never look for it on disk: a plugin's skills are not under `~/.claude/skills/`, and searching there finds nothing. Whenever you apply a principle, load its leaf `principle-*` skill the same way, through the Skill tool with the `pstack-cc:` prefix (for example `pstack-cc:principle-prove-it-works`).}g;
+
+# --- upstream re-reads pstack files from its monorepo (`git show origin/main:pstack/...`).
+# --- No user repo has a pstack/ path, so each read failed on its first command (measured:
+# --- "path 'pstack/skills/swarm/SKILL.md' does not exist in 'origin/main'"). A skill loads
+# --- through the Skill tool. The agent reads a playbook from poteto-mode's base directory,
+# --- which the Skill tool prints when it loads that skill. ${CLAUDE_PLUGIN_ROOT} fails for a
+# --- playbook. Claude Code expands it in a SKILL.md the Skill tool loads, but the Read tool
+# --- returns a playbook's bytes as written, and Bash has no such variable. One rule per
+# --- line, so the dead-rule audit names whichever line upstream rewords.
+s{The program runs `pstack/skills/poteto-mode/playbooks/<execution playbook>\.md`\.}{The program runs `playbooks/<execution playbook>.md` from the `pstack-cc:poteto-mode` skill.}g;
+s{Read these from trunk at program start\. Re-read them at every tick\.}{Read these at program start. Re-read them at every tick. Load a skill with the Skill tool. Read a playbook from the base directory that the Skill tool prints when it loads `pstack-cc:poteto-mode`. Load that skill again if the path has left your context.}g;
+s{`git show origin/main:pstack/skills/poteto-mode/playbooks/<execution playbook>\.md`}{Read `playbooks/<execution playbook>.md` from the `pstack-cc:poteto-mode` base directory}g;
+s{`git show origin/main:pstack/skills/swarm/SKILL\.md`}{Load `pstack-cc:swarm` with the Skill tool}g;
+s{`git show origin/main:pstack/skills/poteto-mode/playbooks/opening-a-pr\.md`}{Read `playbooks/opening-a-pr.md` from the `pstack-cc:poteto-mode` base directory}g;
+s{`git show origin/main:pstack/skills/<each other leaf skill the program uses>`}{Load `pstack-cc:<each other leaf skill the program uses>` with the Skill tool}g;
+s{"Re-read the execution playbook from trunk\.}{"Re-read the execution playbook from the `pstack-cc:poteto-mode` base directory.}g;
+s{run the swarm per `pstack/skills/swarm/SKILL\.md`\.}{run the swarm per the `pstack-cc:swarm` skill.}g;
+s{Which PRs get `pstack/skills/how/SKILL\.md` and `pstack/skills/interrogate/SKILL\.md`\. The trail per `pstack/skills/show-me-your-work/SKILL\.md`\.}{Which PRs get the `pstack-cc:how` and `pstack-cc:interrogate` skills. The trail per the `pstack-cc:show-me-your-work` skill.}g;
+s{re-read this playbook from trunk with `git show origin/main:pstack/skills/poteto-mode/playbooks/autopilot-full\.md` and audit the operation against it\.}{re-read this playbook, `playbooks/autopilot-full.md` under the `pstack-cc:poteto-mode` base directory, and audit the operation against it. The Skill tool prints that directory when it loads the skill. Load that skill again if the path has left your context.}g;
+s{re-read this playbook from trunk with `git show origin/main:pstack/skills/poteto-mode/playbooks/autopilot-stack\.md` and audit the operation against it\.}{re-read this playbook, `playbooks/autopilot-stack.md` under the `pstack-cc:poteto-mode` base directory, and audit the operation against it. The Skill tool prints that directory when it loads the skill. Load that skill again if the path has left your context.}g;
+# --- check-plan requires a marker string from the re-read list. Point it at the new list.
+s{const PROGRAM_MARKERS = \["git show origin/main:", }{const PROGRAM_MARKERS = ["pstack-cc:poteto-mode", }g;
