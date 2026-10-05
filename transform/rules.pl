@@ -149,5 +149,7 @@ s{run the swarm per `pstack/skills/swarm/SKILL\.md`\.}{run the swarm per the `ps
 s{Which PRs get `pstack/skills/how/SKILL\.md` and `pstack/skills/interrogate/SKILL\.md`\. The trail per `pstack/skills/show-me-your-work/SKILL\.md`\.}{Which PRs get the `pstack-cc:how` and `pstack-cc:interrogate` skills. The trail per the `pstack-cc:show-me-your-work` skill.}g;
 s{re-read this playbook from trunk with `git show origin/main:pstack/skills/poteto-mode/playbooks/autopilot-full\.md` and audit the operation against it\.}{re-read this playbook, `playbooks/autopilot-full.md` under the `pstack-cc:poteto-mode` base directory, and audit the operation against it. The Skill tool prints that directory when it loads the skill. Load that skill again if the path has left your context.}g;
 s{re-read this playbook from trunk with `git show origin/main:pstack/skills/poteto-mode/playbooks/autopilot-stack\.md` and audit the operation against it\.}{re-read this playbook, `playbooks/autopilot-stack.md` under the `pstack-cc:poteto-mode` base directory, and audit the operation against it. The Skill tool prints that directory when it loads the skill. Load that skill again if the path has left your context.}g;
-# --- check-plan requires a marker string from the re-read list. Point it at the new list.
-s{const PROGRAM_MARKERS = \["git show origin/main:", }{const PROGRAM_MARKERS = ["pstack-cc:poteto-mode", }g;
+# --- check-plan proves the re-read list exists by a marker string. Require the list's two
+# --- fixed entries. `pstack-cc:poteto-mode` alone also matches the tick prompt, so a plan
+# --- with the whole list deleted passed (Codex review on #8, reproduced).
+s{const PROGRAM_MARKERS = \["git show origin/main:", }{const PROGRAM_MARKERS = ["Load `pstack-cc:swarm` with the Skill tool", "Read `playbooks/opening-a-pr.md`", }g;
