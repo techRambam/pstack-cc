@@ -91,6 +91,7 @@ fresh; run_import
 y="$R/plugins/pstack-cc/skills"
 check "routed skill is implicit in Codex" 0 "allow_implicit_invocation: true" "$code" "$(cat "$y/to-spec/agents/openai.yaml")"
 check "extra stays user-only in Codex"    0 "allow_implicit_invocation: false" "$code" "$(cat "$y/triage/agents/openai.yaml")"
+check "slash names are the registered ones" 0 "\`/pstack-cc:setup-matt-pocock-skills\`" "$code" "$(cat "$y/to-spec/SKILL.md")"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

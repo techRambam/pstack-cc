@@ -64,7 +64,7 @@ split by phase.
 | Phase | Who decides | Skills |
 |---|---|---|
 | Deciding what to build | You. The agent asks, and your confirmation is the gate. | The Deciding playbook: `setup-matt-pocock-skills` once per repo, `grill-with-docs` (`grilling` plus `domain-modeling`), `to-spec`, `to-tickets`, `wayfinder` for work bigger than a session |
-| Building an agreed spec or ticket | The agent, autonomously | pstack's Feature and Bug fix playbooks, one ticket at a time in blocking order. The ticket's acceptance criteria are the verify predicate, `tdd` tests at its seams under test, and the PR closes it. Autopilot-stack when you ask for it. |
+| Building an agreed spec or ticket | The agent, autonomously | pstack's Feature and Bug fix playbooks, one ticket at a time in blocking order. The ticket's acceptance criteria are the verify predicate, `tdd` tests at its seams under test, and merging the work closes it. Autopilot-stack when you ask for it. |
 
 Specs and tickets go to the tracker that `/pstack-cc:setup-matt-pocock-skills` records, once per
 repo. Choose GitHub issues when it asks; it proposes them for a GitHub remote. In a cloud

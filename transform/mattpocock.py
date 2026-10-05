@@ -9,7 +9,7 @@ Matt's text. Fails, rather than guessing, when:
   - a merged skill's extra files would overwrite a pstack file
   - an edit below no longer matches upstream's text exactly as often as expected
 """
-import json, pathlib, shutil, sys
+import json, pathlib, re, shutil, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "upstream-mattpocock"
@@ -49,6 +49,20 @@ EDITS = [
 # model and the router's targets do not exist there. Extras keep both.
 CODEX_USER_ONLY = "allow_implicit_invocation: false"
 CODEX_IMPLICIT = "allow_implicit_invocation: true"
+
+
+def bare_slash(rows):
+    """`/name` for an imported skill, by its upstream or target name, as a command and not a path.
+
+    Shared with tests/lint-skills.py, so the rewrite and the check can never disagree on what
+    a bare mention is. Returns (pattern, {name: target})."""
+    names = {}
+    for r in rows:
+        if r["role"] != "exclude":
+            names[pathlib.PurePath(r["source"]).name] = r["target"]
+            names[r["target"]] = r["target"]
+    alt = "|".join(sorted(map(re.escape, names), key=len, reverse=True))
+    return re.compile(r"(?<![\w:./-])/(" + alt + r")(?![\w/-])"), names
 
 
 def manifest():
@@ -123,10 +137,27 @@ def main():
             continue
         p.write_text(text.replace(old, new), encoding="utf-8")
 
+    # His skills name each other as `/name`, but a plugin registers only `/pstack-cc:name`
+    # (MEASURED 2026-10-05: the init event's slash_commands has no bare entries), so a user
+    # told to run `/setup-matt-pocock-skills` finds nothing. Name each imported skill as
+    # registered, under its target name. tests/lint-skills.py fails on any bare one left,
+    # backticked or not.
+    bare, renamed = bare_slash(rows)
+    rewrites = 0
+    for r in rows:
+        if r["role"] == "exclude":
+            continue
+        for f in (PLUGIN / "skills" / r["target"]).rglob("*.md"):
+            text = f.read_text(encoding="utf-8")
+            new_text, n = bare.subn(lambda m: f"/pstack-cc:{renamed[m.group(1)]}", text)
+            if n:
+                f.write_text(new_text, encoding="utf-8")
+                rewrites += n
+
     shutil.copy2(SRC / "LICENSE", PLUGIN / "LICENSE.mattpocock")
     excluded = sum(r["role"] == "exclude" for r in rows)
     print(f"    mattpocock: {imported} imported, {merged} merged, {excluded} excluded, "
-          f"{len(EDITS)} edits")
+          f"{len(EDITS)} edits, {rewrites} slash names namespaced")
     return problems
 
 

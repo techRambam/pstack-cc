@@ -200,15 +200,13 @@ the dead-rule audit catches an upstream reword of their anchors.
 | Matt's user-only skills (`disable-model-invocation`, and `allow_implicit_invocation: false` in Codex's `agents/openai.yaml`) cannot be routed to | Both dropped on the core and merged skills, as for pstack's own. `MEASURED:` before this, Codex never showed its model 8 routed skills (`codex debug prompt-input`). Both kept on the extras (`triage`, `course`, `to-questionnaire`), which nothing routes to. The lint fails when the two harnesses disagree. |
 | Deciding had no playbook, while poteto-mode opens every task with a playbook's steps | `own/skills/poteto-mode/playbooks/deciding.md`, listed before Feature. It ends at approved tickets; building waits for the user. |
 | Agreed seams had no slot in the spec or ticket templates | Asserted edits add Seams under test to `to-spec`'s Testing Decisions and both `to-tickets` templates; `tdd` reads the ticket's, else the spec's. |
-| The build phase never read or closed the ticket | The router line for building says to read it with `gh issue view`, verify against its acceptance criteria, and close it from the PR. |
+| The build phase never read or closed the ticket | The router line for building fetches it through the tracker that setup recorded (`docs/agents/issue-tracker.md`), verifies against its acceptance criteria, and closes it on merge: `Closes #<n>` on GitHub or GitLab, `Status: resolved` on local markdown. The tracker docs say how to close by hand but not from a PR, so the router states it. |
+| Matt's skills name each other as `/name`, but a plugin registers only `/pstack-cc:name` (`MEASURED:` the init event's `slash_commands` has no bare entries), so `to-spec` told users to run a command that does not exist | `mattpocock.py` rewrites every backticked `/<imported skill>` to its registered name; the lint fails on any bare one left. |
 | The budget hook allows autopilot only when the user names it | A ticket queue goes to Feature per ticket in blocking order; Autopilot-stack only when named. |
 
 **Known gaps.**
 - `budget.sh` caps fan-out at 3 subagents per step on `balanced`. That cap also applies to
   Matt's design-it-twice (3 or more subagents) and to grilling's fact-finding subagents.
-- `setup-matt-pocock-skills` and its dependents name `/setup-matt-pocock-skills` without the
-  `pstack-cc:` prefix. `UNVERIFIED:` whether a bare slash name resolves to a plugin skill;
-  the Skill tool loads it either way.
 - Codex reads this plugin through its marketplace entry (`MEASURED:` `codex plugin
   marketplace add` and `codex plugin add pstack-cc@pstack-cc` install it). Matt's per-skill
   `agents/openai.yaml` files ship with the invocation policy above. pstack's skills have none.

@@ -4,7 +4,7 @@
 
 This is the one playbook that asks instead of proceeding. It ends at agreed tickets, and building them is the Feature or Bug fix playbook's job.
 
-1. If the repo has no `docs/agents/issue-tracker.md`, run the **setup-matt-pocock-skills** skill first, so the spec and tickets land in the tracker. Pick GitHub issues when it asks. It proposes them for a GitHub remote.
+1. If the repo has no `docs/agents/issue-tracker.md`, run the **setup-matt-pocock-skills** skill first, so the spec and tickets land in the tracker. Take the tracker it proposes for this repo's remote (GitHub issues for a GitHub remote, GitLab for GitLab, local markdown with none) unless the user names another.
 2. Work bigger than one session goes to the **wayfinder** skill instead. Return to step 3 for each part of its map that resolves into something buildable.
 3. Run the **grill-with-docs** skill. It grills over the design tree, one round at a time, and records resolved terms and hard-to-reverse decisions with the **domain-modeling** skill in `GLOSSARY.md` and ADRs. Grilling's confirmation is the gate to step 4.
 4. Run the **to-spec** skill. Agree the seams under test in its step 2, and keep them in the spec's Testing Decisions.

@@ -147,11 +147,23 @@ for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
     if rel.parts[0] == "skills" and rel.parts[1] in EXTRAS:
         continue
     text = md.read_text(encoding="utf-8")
-    named = set(BOLD_RE.findall(text)) | set(NS_RE.findall(text))
+    # A slash command (`/pstack-cc:triage`) is what the user types, not a route for the agent.
+    named = set(BOLD_RE.findall(text)) | set(re.findall(r"(?<!/)pstack-cc:([a-z0-9-]+)", text))
     for clause in CALL_RE.finditer(text):
         named |= set(QUOTED_RE.findall(clause.group(0)))
     for n in sorted(named & EXTRAS):
         errs.append(f"{rel}: routes to {n!r}, which is an unrouted extra (transform/mattpocock.tsv)")
+
+# Matt's skills are registered as /pstack-cc:<name>; a bare `/<name>` names no command.
+# The same pattern transform/mattpocock.py rewrites with, so the two cannot disagree.
+sys.path.insert(0, str(ROOT.parent.parent / "transform"))
+import mattpocock  # noqa: E402
+BARE_RE, TARGET = mattpocock.bare_slash(mattpocock.manifest())
+for md in sorted((ROOT / "skills").rglob("*.md")) + agents:
+    for m in BARE_RE.finditer(md.read_text(encoding="utf-8")):
+        checked += 1
+        errs.append(f"{md.relative_to(ROOT)}: /{m.group(1)} is not a command; the plugin registers "
+                    f"/pstack-cc:{TARGET[m.group(1)]}")
 
 print(f"linted {len(skills)} skills, {len(agents)} agents, {checked} cross-references")
 for e in errs: print("  FAIL " + e)
