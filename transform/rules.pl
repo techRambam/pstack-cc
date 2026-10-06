@@ -165,7 +165,8 @@ s{const PROGRAM_MARKERS = \["git show origin/main:", }{const PROGRAM_MARKERS = [
 # --- code review runs on every PR, before it opens (user decision 2026-10-06). Upstream
 # --- runs interrogate on a lead's diff only for a contested design, but always when a
 # --- subagent opens the PR, so a lead's PR could reach the forge with no code review.
-s{Run `/no-comments` before review\.}{Run `/no-comments`, then review the branch diff with `interrogate` on every PR, whether or not the design is contested. Fix its `Act on` findings before you open the PR.}g;
-s{^- Contested design → the \*\*interrogate\*\* skill \(multi-model adversarial\) before shipping\.$}{- Before opening a PR → the **interrogate** skill (multi-model adversarial) on the branch diff. Every PR gets it, whether or not the design is contested.};
-s{^7\. If the design is contested, `interrogate` before shipping\.\n}{};
-s{^8\. Run \*\*Opening a PR\*\*\.$}{7. Run **Opening a PR**.};
+s{Run `/no-comments` before review\.}{Run `/no-comments` and commit its fixes. Then review the PR's own diff (`git diff <base-branch>...HEAD`, where a stack child's base is its parent branch) with `interrogate`, on every PR, whether or not the design is contested. A run in which no reviewer delivered is not a review. Fix its `Act on` findings before you open the PR. An owner whose playbook opens the PR early, such as an Autopilot owner, does this before its code-ready report instead.}g;
+s{A subagent that opens a PR runs `interrogate`, `/pstack-cc:unslop`, and `/no-comments`, and posts the URL\.}{A subagent that opens a PR follows **PRs** above, review included, and posts the URL.}g;
+s{^- Contested design → the \*\*interrogate\*\* skill \(multi-model adversarial\) before shipping\.$}{- Before opening a PR → the **interrogate** skill (multi-model adversarial) on the PR's own diff. Every PR gets it, whether or not the design is contested.};
+s{^7\. If the design is contested, `interrogate` before shipping\.\n}{} if $ARGV =~ m{/playbooks/feature\.md$};
+s{^8\. Run \*\*Opening a PR\*\*\.$}{7. Run **Opening a PR**.} if $ARGV =~ m{/playbooks/feature\.md$};
