@@ -120,6 +120,7 @@ modifier** and silently mangles the URL to `models/5-flashnerateContent`. Brace 
 | `gh pr merge … --squash` → `--merge` (`shipping.md:11`, `autopilot-full.md:9`, `multi-phase-plan.md:132`) | A squash rewrites the branch's commits into one new commit on the base, so a branch you keep working on conflicts by *unrelated history* on its next PR. Merge commits only. |
 | `watch-pr` default `--interval` 60 → 300 | Its default mode is unbounded (`--timeout 0`) and hits a remote API. 300s is the floor for an unbounded poll. Override per-run if you need faster. |
 | Bugbot marker regex widened to `(?:CURSOR_)?AUTOMATION_ID:` | Works with any review bot that stamps an id, not only Cursor's. The rest of `bugbot-triage.md` is a rubric and is harness-independent. |
+| `interrogate` runs on every PR in Opening a PR (`opening-a-pr.md:9`), and Feature drops its "if the design is contested" step (`feature.md`) | Upstream runs `interrogate` on a lead's diff only when the design is contested, but always when a subagent opens the PR, so a lead's PR could reach the forge with no code review. One review before the PR opens, by models that did not write the code, covers every playbook that ends in Opening a PR. Upstream's guide still describes `interrogate` as an optional rung (`reference/upstream-guide/04-design.md`). |
 
 ## 6. Known gaps — not solved, stated plainly
 
