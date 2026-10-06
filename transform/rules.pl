@@ -162,3 +162,10 @@ s{re-read this playbook from trunk with `git show origin/main:pstack/skills/pote
 # --- fixed entries. `pstack-cc:poteto-mode` alone also matches the tick prompt, so a plan
 # --- with the whole list deleted passed (Codex review on #8, reproduced).
 s{const PROGRAM_MARKERS = \["git show origin/main:", }{const PROGRAM_MARKERS = ["Load `pstack-cc:swarm` with the Skill tool", "Read `playbooks/opening-a-pr.md`", }g;
+# --- code review runs on every PR, before it opens (user decision 2026-10-06). Upstream
+# --- runs interrogate on a lead's diff only for a contested design, but always when a
+# --- subagent opens the PR, so a lead's PR could reach the forge with no code review.
+s{Run `/no-comments` before review\.}{Run `/no-comments`, then review the branch diff with `interrogate` on every PR, whether or not the design is contested. Fix its `Act on` findings before you open the PR.}g;
+s{^- Contested design → the \*\*interrogate\*\* skill \(multi-model adversarial\) before shipping\.$}{- Before opening a PR → the **interrogate** skill (multi-model adversarial) on the branch diff. Every PR gets it, whether or not the design is contested.};
+s{^7\. If the design is contested, `interrogate` before shipping\.\n}{};
+s{^8\. Run \*\*Opening a PR\*\*\.$}{7. Run **Opening a PR**.};
