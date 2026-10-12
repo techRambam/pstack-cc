@@ -12,7 +12,7 @@ SKILL_OK = {"name", "description", "allowed-tools", "user-invocable",
             "license", "paths", "model", "version", "argument-hint"}
 AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
             "background", "isolation", "permissionMode", "maxTurns", "skills",
-            "effort", "memory", "omitClaudeMd"}
+            "effort", "memory", "omitClaudeMd", "experimental"}
 # Slash-only on purpose: side effects (it wires a UI that triggers agent runs and holds
 # a server-side secret) and no pstack skill routes to it. Every other skill must stay
 # invocable by Claude, or the skills that route to it are refused.
@@ -63,6 +63,12 @@ for p in agents:
     n = f.get("name", "")
     if not NAME_RE.match(n): errs.append(f"{rel}: agent name {n!r} is not lowercase-hyphen")
     for k in set(f) - AGENT_OK: errs.append(f"{rel}: unsupported agent key {k!r}")
+
+# transform/frontmatter.py's MAIN_THREAD_ONLY reaches poteto-agent; read-only carries a copy.
+denied = {p.stem: {t.strip() for t in (fm(p) or {}).get("disallowedTools", "").split(",") if t.strip()}
+          for p in agents}
+missing = denied.get("poteto-agent", set()) - denied.get("read-only", set())
+if missing: errs.append(f"agents/read-only.md: disallowedTools lacks {sorted(missing)} (transform/frontmatter.py)")
 
 # --- references between skills ----------------------------------------------
 # An upstream sync can rename a playbook, reference or skill that another file still

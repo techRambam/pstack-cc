@@ -43,6 +43,19 @@ def split_fm(text):
 # that structural instead of an instruction a fresh agent can skip.
 PRELOAD = {"poteto-agent": ["pstack-cc:poteto-mode"]}
 
+# Tools only the main conversation uses. A spawned agent re-reads every tool schema on every
+# call, and these cost 19k tokens per call (55k vs 36k at spawn, measured 2026-10-13).
+# own/agents/read-only.md denies the same list; tests/lint-skills.py keeps the two in step.
+MAIN_THREAD_ONLY = ("Artifact, Workflow, ScheduleWakeup, ReadNotifications, ListAgents, "
+                    "SendUserFile, SuggestPluginInstall, SuggestSkills, SearchPlugins, "
+                    "ReportFindings, mcp__claude-code-remote, mcp__visualize, "
+                    "mcp__Claude_Code_iOS_Simulator, mcp__ccd_session, mcp__terminal")
+
+# A builder waits on test runs and CI past the default 5-minute subagent cache, then rewrites
+# its whole context; 1h keeps it warm. A subagentPromptCacheTtl setting still wins.
+AGENT_KEYS = {"poteto-agent": ["effort: high", f"disallowedTools: {MAIN_THREAD_ONLY}",
+                               "experimental:", "  cacheTtl: 1h"]}
+
 # Claude Code lists every skill's description in 1% of the context window, in characters
 # (30,000 on a 1M-context Opus), and drops descriptions past that (docs/PORT.md section 9).
 # Upstream's principle descriptions spent a fifth of that. Nothing finds a principle by its
@@ -98,6 +111,10 @@ for base in sys.argv[1:]:
         agent = p.parent.name == "agents" and p.stem in PRELOAD
         if agent and not any(l.startswith("skills:") for l in out):
             out += ["skills:"] + [f"  - {s}" for s in PRELOAD[p.stem]]
+            touched = True
+        extra = AGENT_KEYS.get(p.stem, []) if p.parent.name == "agents" else []
+        if extra and not any(l.startswith("disallowedTools:") for l in out):
+            out += extra
             touched = True
         if touched:
             p.write_text("---\n" + "\n".join(out) + "\n---\n" + body, encoding="utf-8")
