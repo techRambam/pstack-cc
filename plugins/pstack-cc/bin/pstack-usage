@@ -21,7 +21,7 @@ import argparse, collections, datetime, json, math, os, pathlib, sys
 
 # Relative weight per token, Sonnet 5.5 = 1 (API list prices, $/MTok: Fable 5.1
 # 10/50, Opus 5.5 4/20, Sonnet 5.5 2/10, Haiku 4.5 1/5). Cache reads are 10% of
-# input; cache writes are billed above input, approximated here as 1.25x.
+# input. A cache write is 1.25x input with a 5-minute TTL and 2x with a 1-hour TTL.
 PRICE = {"fable": (5.0, 5.0), "mythos": (5.0, 5.0), "opus": (2.0, 2.0),
          "sonnet": (1.0, 1.0), "haiku": (0.5, 0.5)}
 
@@ -36,8 +36,10 @@ def family(model):
 
 def weight(fam, u):
     pin, pout = PRICE.get(fam, (1.0, 1.0))
+    # Transcripts split writes by TTL under cache_creation; a write with no split is 5-minute.
+    hour = (u.get("cache_creation") or {}).get("ephemeral_1h_input_tokens", 0)
     return (pin * (u.get("input_tokens", 0)
-                   + 1.25 * u.get("cache_creation_input_tokens", 0)
+                   + 1.25 * (u.get("cache_creation_input_tokens", 0) - hour) + 2 * hour
                    + 0.1 * u.get("cache_read_input_tokens", 0))
             + 5 * pout * u.get("output_tokens", 0)) / 1e6
 
@@ -107,7 +109,8 @@ def main():
             # a longer gap is that cache expiring: the whole context, paid again.
             if (role == "subagents" and prev and (t - prev).total_seconds() > 300
                     and written > 30000 and u.get("cache_read_input_tokens", 0) < 0.2 * written):
-                rewrite[0] += 1; rewrite[1] += weight(fam, {"cache_creation_input_tokens": written})
+                rewrite[0] += 1; rewrite[1] += weight(fam, {"cache_creation_input_tokens": written,
+                                            "cache_creation": u.get("cache_creation")})
             prev = t
         return spent
 

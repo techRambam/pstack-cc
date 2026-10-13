@@ -47,6 +47,15 @@ eq "a large context gets the compaction tip" "$(grep -c 'autoCompactWindow' <<<"
 eq "idle rewrites get the cache TTL tip"     "$(grep -c 'subagentPromptCacheTtl' <<<"$out")" "1"
 eq "workflow agents are attributed"          "$(grep -c 'pstack-cc:poteto-a' <<<"$out")" "1"
 
+# A third tree: a 1-hour cache write costs 2x input, a 5-minute one 1.25x.
+R="$T/r/projects/-Users-me-app"; mkdir -p "$R/s3/subagents"; : > "$R/s3.jsonl"
+written() { # ttl
+  printf '{"type":"assistant","requestId":"w-%s","timestamp":"%s","message":{"model":"claude-sonnet-5-5","usage":{"input_tokens":0,"output_tokens":0,"cache_read_input_tokens":0,"cache_creation_input_tokens":100000,"cache_creation":{"ephemeral_%s_input_tokens":100000}}}}\n' "$1" "$now" "$1"; }
+written 1h > "$R/s3/subagents/agent-h.jsonl"; printf '{"agentType":"hour"}' > "$R/s3/subagents/agent-h.meta.json"
+written 5m > "$R/s3/subagents/agent-f.jsonl"; printf '{"agentType":"five"}' > "$R/s3/subagents/agent-f.meta.json"
+out="$(CLAUDE_CONFIG_DIR="$T/r" python3 "$U" --days 7)"
+eq "a 1-hour cache write weighs 2x input"    "$(grep -E '^  hour ' <<<"$out" | awk '{print $2}')" "61.5%"
+
 rm -rf "$T"
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
