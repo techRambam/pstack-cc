@@ -5,7 +5,8 @@ Cursor's Task tool takes `readonly: true` (Ask mode: no edits, no MCP) and
 `readonly: false` (agent mode). Claude Code's Agent tool has no such parameter,
 so a ported `readonly: true` silently spawned a general-purpose agent that could
 edit the tree and fan out. own/agents/read-only.md is the real equivalent: the
-same tools minus Edit, Write, NotebookEdit and Agent, with MCP intact.
+same tools minus Edit, Write, NotebookEdit and Agent, and minus the main-thread-only tools
+that transform/frontmatter.py denies every listed agent. Other MCP tools stay.
 
 The spawn specs span lines (`subagent_type`, then `model`, then `readonly`), so
 this is a multi-line rewrite rather than a rules.pl substitution. Every pattern

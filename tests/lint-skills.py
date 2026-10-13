@@ -64,12 +64,6 @@ for p in agents:
     if not NAME_RE.match(n): errs.append(f"{rel}: agent name {n!r} is not lowercase-hyphen")
     for k in set(f) - AGENT_OK: errs.append(f"{rel}: unsupported agent key {k!r}")
 
-# transform/frontmatter.py's MAIN_THREAD_ONLY reaches poteto-agent; read-only carries a copy.
-denied = {p.stem: {t.strip() for t in (fm(p) or {}).get("disallowedTools", "").split(",") if t.strip()}
-          for p in agents}
-missing = denied.get("poteto-agent", set()) - denied.get("read-only", set())
-if missing: errs.append(f"agents/read-only.md: disallowedTools lacks {sorted(missing)} (transform/frontmatter.py)")
-
 # --- references between skills ----------------------------------------------
 # An upstream sync can rename a playbook, reference or skill that another file still
 # points at; nothing else notices until an agent follows the dead link mid-task.

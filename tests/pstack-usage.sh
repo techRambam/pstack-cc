@@ -30,17 +30,19 @@ eq "message text is never printed"         "$(grep -c 'SECRET-TEXT' <<<"$out")" 
 eq "xhigh-heavy spend gets the effort tip" "$(grep -c '/effort high' <<<"$out")" "1"
 eq "--project filters"                     "$(CLAUDE_CONFIG_DIR="$T" python3 "$U" --project nomatch | grep -c 'No assistant turns')" "1"
 
-# A second tree: context per call, a cache rewritten after an idle gap, a workflow agent.
-Q="$T/q/projects/-Users-me-app"; mkdir -p "$Q/s2/subagents/workflows/wf_1"
+# A second tree: context per call, which idle-gap writes count as an expired cache, a workflow agent.
+Q="$T/q/projects/-Users-me-app"; W="$Q/s2/subagents/workflows/wf_1"; mkdir -p "$W"
 gap="$(python3 -c 'import datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(minutes=10)).isoformat())')"
 cached() { # requestId cache_read cache_creation timestamp
   printf '{"type":"assistant","requestId":"%s","timestamp":"%s","message":{"model":"claude-sonnet-5-5","usage":{"input_tokens":0,"output_tokens":0,"cache_read_input_tokens":%s,"cache_creation_input_tokens":%s}}}\n' "$1" "$4" "$2" "$3"; }
-{ cached q1 200000 0 "$gap"; cached q2 0 300000 "$now"; } > "$Q/s2.jsonl"
-cached q3 1000 0 "$now" > "$Q/s2/subagents/workflows/wf_1/agent-y.jsonl"
-printf '{"agentType":"pstack-cc:poteto-agent"}' > "$Q/s2/subagents/workflows/wf_1/agent-y.meta.json"
+{ cached q1 200000 0 "$gap"; cached q2 0 300000 "$now"; } > "$Q/s2.jsonl"   # main session: not counted
+{ cached y1 1000 0 "$gap"; cached y2 0 40000 "$now"; } > "$W/agent-y.jsonl"     # expired: counted
+{ cached z1 1000 0 "$gap"; cached z2 100000 40000 "$now"; } > "$W/agent-z.jsonl" # cache still read: growth
+printf '{"agentType":"pstack-cc:poteto-agent"}' > "$W/agent-y.meta.json"
 out="$(CLAUDE_CONFIG_DIR="$T/q" python3 "$U" --days 7)"
 eq "context per call is averaged"            "$(grep -E '^  in main sessions' <<<"$out" | awk '{print $5}')" "250k"
-eq "an idle-gap cache rewrite is counted"    "$(grep -c 'idle gap: 1 call,' <<<"$out")" "1"
+eq "p90 is the 90th-percentile call"         "$(grep -E '^  in main sessions' <<<"$out" | awk '{print $6}')" "300k"
+eq "only an expired subagent cache counts"   "$(grep -c 'idle gap: 1 call,' <<<"$out")" "1"
 eq "a large context gets the compaction tip" "$(grep -c 'autoCompactWindow' <<<"$out")" "1"
 eq "idle rewrites get the cache TTL tip"     "$(grep -c 'subagentPromptCacheTtl' <<<"$out")" "1"
 eq "workflow agents are attributed"          "$(grep -c 'pstack-cc:poteto-a' <<<"$out")" "1"

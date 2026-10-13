@@ -64,8 +64,8 @@ subscription plan:
 - **max**: upstream's full fan-out, `opus` on every build and judgment role. Fastest way
   through a plan's limits; for API billing or a short, high-stakes run.
 - **balanced** (recommended): `opus` only where a judgment is made (synthesizers, the
-  explainer, the one Claude seat per panel); `sonnet` builds, the hardest ones included; panels are filled with
-  non-Claude seats; at most 3 subagents per step.
+  explainer, the one Claude seat per panel); `sonnet` builds, the hardest ones included;
+  panels are filled with non-Claude seats; at most 3 subagents per step.
 - **lean**: `sonnet` for judgment, `haiku` for search and bulk work, no `opus` seat on panels,
   at most 2 subagents per step. Noticeably weaker on hard design and review calls.
 
