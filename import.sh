@@ -80,7 +80,7 @@ python3 "$ROOT/transform/mattpocock.py" || die "mattpocock import failed (see ab
 
 # --- 4. frontmatter normalisation --------------------------------------
 log "normalising frontmatter"
-python3 "$ROOT/transform/frontmatter.py" "$PLUGIN/skills" "$PLUGIN/agents"
+python3 "$ROOT/transform/frontmatter.py" "$PLUGIN/skills" || die "frontmatter failed (see above)"
 
 log "wiring cross-vendor panels"
 python3 "$ROOT/transform/panels.py"
@@ -123,6 +123,10 @@ if [ -d "$ROOT/own" ]; then
     printf '    own: %s\n' "$rel"
   done < <(cd "$ROOT/own" && find . -type f -print0)
 fi
+
+# Agents are normalised after own/, so own/agents/read-only.md gets the same added keys.
+log "normalising agent frontmatter"
+python3 "$ROOT/transform/frontmatter.py" "$PLUGIN/agents" || die "frontmatter failed (see above)"
 
 log "auditing rule coverage + overlay drift"
 python3 "$ROOT/transform/audit.py" "$COUNTS" $ACCEPT || die "audit failed (see above)"

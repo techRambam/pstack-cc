@@ -4,6 +4,10 @@ description: Routing target for `/poteto-mode` and any request for poteto's styl
 background: true
 skills:
   - pstack-cc:poteto-mode
+effort: high
+experimental:
+  cacheTtl: 1h
+disallowedTools: Artifact, Workflow, ScheduleWakeup, ReadNotifications, ListAgents, SendUserFile, SuggestPluginInstall, SuggestSkills, SearchPlugins, ReportFindings, mcp__claude-code-remote, mcp__visualize, mcp__Claude_Code_iOS_Simulator, mcp__ccd_session, mcp__terminal
 ---
 
 # Poteto subagent
