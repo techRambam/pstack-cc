@@ -4,7 +4,7 @@
 
 1. When the change is one or two files with an obvious approach, skip the plan. Say so and stop.
 2. Settle open questions by prototype before you write. Run `playbooks/prototype.md` for each. Keep the branch, the SHA, and the screenshots for Appendix A. Ask the operator only about a product or preference call that no run can settle. Give options (the **never-block-on-the-human** principle skill).
-3. Explore in subagents with `subagent_type: "pstack-cc:poteto-agent"` and an explicit model per the Subagents section (the **guard-the-context-window** principle skill). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
+3. Explore in subagents with `subagent_type: "pstack-cc:poteto-agent"` and an explicit model per the Subagents section (the **guard-the-context-window** principle skill). Pick each subagent's model for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.
 4. Copy the skeleton below into the plan file and fill every placeholder. Unless the operator names a path, write the file under the agent store's `docs/`. Keep every heading and every sub-block in the order shown. One section per PR. One PR is one change with its own evidence (the **sequence-verifiable-units** principle skill). Name the execution playbook in **How to read this**. Pick between `playbooks/autopilot-full.md` and `playbooks/autopilot-stack.md` per the rule at the end of `playbooks/autopilot-stack.md`. A standing program takes `playbooks/orchestrate.md`.
 5. Write under `/technical-writing` in full, then `/unslop`. The body is one Diátaxis mode, how-to. Appendices hold explanation and reference. Each heading states the task or the finding. No long dashes. No mid-sentence colons.
 6. Run `node scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **encode-lessons-in-structure** principle skill).
@@ -35,7 +35,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 - [ ] Read these at program start. Re-read them at every tick. Load a skill with the Skill tool. Read a playbook from the base directory that the Skill tool prints when it loads `pstack-cc:poteto-mode`. Load that skill again if the path has left your context.
   - [ ] Read `playbooks/<execution playbook>.md` from the `pstack-cc:poteto-mode` base directory
   - [ ] Load `pstack-cc:swarm` with the Skill tool
-  - [ ] `git show origin/main:<control skill path>`
+  - [ ] Re-read the **Control skill** entry above for the surface this program drives
   - [ ] Read `playbooks/opening-a-pr.md` from the `pstack-cc:poteto-mode` base directory
   - [ ] Load `pstack-cc:<each other leaf skill the program uses>` with the Skill tool
 - [ ] On the operator's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.

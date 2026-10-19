@@ -31,8 +31,7 @@ FIXES = [
     ("skills/why/SKILL.md", re.compile(
         r"Every spawn is `general-purpose` with `readonly: false` \(agent mode\)\. \*\*Do not use readonly/Ask mode\.\*\* "
         r"It strips MCP access, which disables the MCP-backed investigators and the synthesizer's citation spot-checks\. "),
-     "Every spawn is `general-purpose`, never `pstack-cc:read-only`. Investigators need MCP and Bash, "
-     "and the synthesizer's citation spot-checks can need MCP. ", 1),
+     "Every spawn is `general-purpose`. ", 1),
 ]
 
 bad = []

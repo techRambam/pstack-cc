@@ -20,7 +20,7 @@ ${rule}
 ### PR mechanics
 ### Verdict and merge
 ### Boot recipe
-\`git show origin/main:\` /loop 1h status message
+Load \`pstack-cc:swarm\` with the Skill tool. Read \`playbooks/opening-a-pr.md\`. /loop 1h status message
 
 ## PR 1
 **Depends on.** None.

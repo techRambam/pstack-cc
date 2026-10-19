@@ -165,8 +165,29 @@ s{^8\. Run \*\*Opening a PR\*\*\.$}{7. Run **Opening a PR**.} if $ARGV =~ m{/pla
 # --- system prompt names". Neither exists here; same layout as the transcript rules above.
 s{find this conversation's transcript in the `agent-transcripts/` directory the system prompt names\.}{find this conversation's transcript in `~/.claude/projects/<slug>/`, where `<slug>` is the workspace path with every character that is not a letter or digit turned into "-". This session's own file there is `\${CLAUDE_SESSION_ID}.jsonl`. Use only that directory.}g;
 # --- since d457567 the slug fallback names Cursor's own model families. Neither resolves in
-# --- the Agent tool, so a refused entry falls back by `claude-*` and `grok-*` alone.
-s{, and `grok-\*` with `cursor-grok-\*` and `composer-\*`\. A refused `composer-\*` entry runs on [^.]*\.}{ and `grok-*`.}g;
+# --- the Agent tool, and no default here is a `grok-*` slug, so a refused entry falls back by `claude-*`.
+s{, and `grok-\*` with `cursor-grok-\*` and `composer-\*`\. A refused `composer-\*` entry runs on (?:Reviewer B's default|`[^`]+`)\.}{.}g;
 # --- poteto-help's references are prompts the user types. A typed command here takes the
 # --- plugin prefix; the bare form is not registered.
 s{(?<![\w:/.~-])/(architect|arena|bro|create-formal-verification-skill|how|in-your-own-words|interrogate|ketchup|maintain-formal-verification-skill|poteto-mode|recall|reflect|sharpen|show-me-your-work|swarm|tdd|teach|why)\b(?!-)}{/pstack-cc:$1}g if $ARGV =~ m{/poteto-help/references/};
+# --- check-plan.test.ts (since d457567) feeds check-plan a valid plan built on upstream's
+# --- `git show origin/main:` marker. The port's check-plan requires its own two markers instead.
+s{^\\`git show origin/main:\\` /loop 1h status message$}{Load \\`pstack-cc:swarm\\` with the Skill tool. Read \\`playbooks/opening-a-pr.md\\`. /loop 1h status message} if $ARGV =~ m{/check-plan\.test\.ts$};
+# --- poteto-agent (since d457567): the runner chat owns "every Task spawn".
+s{\bevery Task spawn\b}{every Agent spawn}g;
+# --- since d457567 poteto-mode tells the runner to pass its own path to every poteto-agent.
+# --- Here the agent preloads poteto-mode and loads every other skill through the Skill tool.
+s{^Bundled skills live at `\.\./<name>/SKILL\.md` from this file, so put this file's absolute path in every `poteto-agent` prompt\.$}{Load a bundled skill with the Skill tool as `pstack-cc:<name>`. `poteto-agent` preloads this skill, so its prompt needs no path to it.}g;
+# --- since d457567 poteto-mode tunes each spawn by editing the effort and -fast tokens of a
+# --- Cursor slug. Claude Code's aliases carry neither, so the step down is a smaller model.
+s{^\*\*Match the model to the job\.\*\* Before each spawn, start from the role's line or default and pick the reasoning level and speed the job needs\..*$}{**Match the model to the job.** Before each spawn, start from the role's line or default. Keep it for the hardest or subtlest work. For routine work, step down within the same vendor (`opus` to `sonnet` to `haiku`), so a diverse panel stays diverse. Verification is the exception and stays on the `swarm workers` model (`sonnet` by default). A role on `auto` or `inherit-parent` stays on the parent model. If the Agent tool rejects a model, use the role's line or default and say so.}g;
+s{Pick each subagent's reasoning level and fast or standard speed for the job,}{Pick each subagent's model for the job,}g;
+s{\bomit Task `model`}{omit the Agent tool's `model`}g;
+s{\ba `Agent`}{an `Agent`}g;
+# --- reflect keeps general-purpose; "readonly strips MCPs" was a Cursor fact.
+s{, and readonly strips MCPs\.}{.}g;
+# --- ketchup (since d457567) charts with Cursor's `/visualize`, which Claude Code lacks.
+s{a chart or diagram from `/visualize`}{a chart or diagram}g;
+s{a `/visualize` chart for numbers}{a chart for numbers}g;
+# --- the control skill is a set of tools here, not a file in upstream's monorepo.
+s{`git show origin/main:<control skill path>`}{Re-read the **Control skill** entry above for the surface this program drives}g;

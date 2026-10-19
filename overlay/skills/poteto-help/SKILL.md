@@ -1,6 +1,6 @@
 ---
 name: poteto-help
-description: Guides users through pstack setup, /poteto-mode, and picking the skill, playbook, or principle for a task. Type /poteto-help with a question.
+description: Guides users through pstack setup, /poteto-mode, and picking the skill, playbook, or principle for a task. Type /pstack-cc:poteto-help with a question.
 disable-model-invocation: true
 ---
 
@@ -39,11 +39,11 @@ When the model rule is missing and it matters, ask whether the user wants to pic
 2. Run [`/pstack-cc:setup-pstack`](../setup-pstack/SKILL.md). It asks for a budget, maps a model to each role, and writes `~/.claude/pstack-models.md`. The file applies to new sessions. Then it offers once each to generate a verification skill and a formal verification skill for the project, unless the project already has one.
 3. Start a real task with `/pstack-cc:poteto-mode`, a goal, and a check that can pass or fail.
 
-Installing changes nothing until the user invokes a skill or `/pstack-cc:poteto-mode` routes to one. Every command takes the `pstack-cc:` prefix. The [README](https://github.com/techRambam/pstack-cc#readme) has the details. Offer to word their first prompt with them, per [`references/prompting.md`](references/prompting.md).
+Installing runs nothing by itself. Most skills load when Claude matches a task to their description, when the user types them, or when `/pstack-cc:poteto-mode` routes to them. `make-bot-ui`, `poteto-help`, `course`, `triage` and `to-questionnaire` load only when typed. Every command takes the `pstack-cc:` prefix. The [README](https://github.com/techRambam/pstack-cc#readme) has the details. Offer to word their first prompt with them, per [`references/prompting.md`](references/prompting.md).
 
 If cost is the worry, say where the tokens go and how to spend fewer. pstack spends extra tokens on subagents and review panels. Rerun `/pstack-cc:setup-pstack` and pick a smaller budget or cheaper models. With no config, a SessionStart hook caps fan-out at the `balanced` budget. A role set to `auto` or `inherit-parent` runs on the session's model. A shorter panel list runs fewer subagents, one for each entry, and a `gpt-*`, `gemini-*` or `vendor:model` panel seat runs through `panelist` outside the Claude plan. `pstack-usage --days 7`, in the plugin's `bin/`, shows where usage went. Save `/pstack-cc:poteto-mode` for work that needs rigor.
 
-pstack is built for Cursor. This plugin regenerates it for Claude Code and adds Matt Pocock's skills for deciding what to build. A step that needs a Cursor-only feature, such as Bugbot or Automations, is skipped with a one-line note. The guide pages linked below are upstream's and describe Cursor. The workflow carries over. The install steps and keybindings do not.
+pstack is built for Cursor. This plugin regenerates it for Claude Code and adds Matt Pocock's skills for deciding what to build. The guide pages linked below are upstream's and describe Cursor. The workflow carries over. The install steps and keybindings do not.
 
 ## Start a task with `/pstack-cc:poteto-mode`
 
@@ -62,6 +62,11 @@ The default answer is `/pstack-cc:poteto-mode`, which runs most of the others wh
 | Do any non-trivial task with rigor | [`/pstack-cc:poteto-mode`](../poteto-mode/SKILL.md) |
 | Check that the agent understood their goal and the problem before it starts | [`/pstack-cc:in-your-own-words`](../in-your-own-words/SKILL.md) |
 | Aim a task higher before starting: more expert, more outcome-focused, not overspecified | [`/pstack-cc:sharpen`](../sharpen/SKILL.md) |
+| Decide what to build with them: a grilling, a glossary and ADRs, then a spec and tickets | [`/pstack-cc:grill-with-docs`](../grill-with-docs/SKILL.md), then [`/pstack-cc:to-spec`](../to-spec/SKILL.md) and [`/pstack-cc:to-tickets`](../to-tickets/SKILL.md) |
+| Plan work too big for one session as a map of decision tickets | [`/pstack-cc:wayfinder`](../wayfinder/SKILL.md) |
+| Build a feedback loop for a hard or flaky bug before guessing at causes | [`/pstack-cc:diagnosing-bugs`](../diagnosing-bugs/SKILL.md) |
+| Research an external API, library, or standard into a cited note | [`/pstack-cc:research`](../research/SKILL.md) |
+| Hand the work to another agent, harness, or person | [`/pstack-cc:handoff`](../handoff/SKILL.md) |
 | Know how code works now, or where new code should live | [`/pstack-cc:how`](../how/SKILL.md) |
 | Know why code is shaped this way, or where a number came from | [`/pstack-cc:why`](../why/SKILL.md) |
 | Understand a change or subsystem, explained plainly | [`/pstack-cc:teach`](../teach/SKILL.md) |
@@ -70,7 +75,7 @@ The default answer is `/pstack-cc:poteto-mode`, which runs most of the others wh
 | Know what a small diff could break outside itself | [`/pstack-cc:blast-radius`](../blast-radius/SKILL.md) |
 | Settle types and module shape before code that crosses a function boundary | [`/pstack-cc:architect`](../architect/SKILL.md) |
 | Get several attempts at one brief, merged into the best one | [`/pstack-cc:arena`](../arena/SKILL.md) |
-| Run parallel checks over slices, or race workers, as cloud agents | [`/pstack-cc:swarm`](../swarm/SKILL.md) |
+| Run parallel checks over slices, or race workers, each in its own worktree | [`/pstack-cc:swarm`](../swarm/SKILL.md) |
 | Have different models review a diff and try to break it | [`/pstack-cc:interrogate`](../interrogate/SKILL.md) |
 | Fix a bug test-first when a cheap local test exists | [`/pstack-cc:tdd`](../tdd/SKILL.md) |
 | Apply TypeScript rules to `.ts` or `.tsx` work | [`/pstack-cc:typescript-best-practices`](../typescript-best-practices/SKILL.md) |
@@ -89,7 +94,7 @@ The default answer is `/pstack-cc:poteto-mode`, which runs most of the others wh
 | Turn their own working habits into a personal mode skill | [`/pstack-cc:automate-me`](../automate-me/SKILL.md) |
 | Turn what a finished task taught into skill edits | [`/pstack-cc:reflect`](../reflect/SKILL.md) |
 | Stop agents from repeating the same mistakes in this repo | [`/pstack-cc:correct`](../correct/SKILL.md) |
-| Build a page whose buttons wake a Grok Bot over a webhook | [`/pstack-cc:make-bot-ui`](../make-bot-ui/SKILL.md) |
+| Build a page whose buttons start an agent run, with the trigger's secret held server-side | [`/pstack-cc:make-bot-ui`](../make-bot-ui/SKILL.md) |
 | Find their way around pstack | `/pstack-cc:poteto-help` |
 
 If a skill directory next to this one is missing from the table, read its frontmatter and route by its description. The `principle-*` directories are covered under principles below.
@@ -123,7 +128,7 @@ Without `/pstack-cc:poteto-mode`, a phrase such as "babysit this pr" can start a
 
 pstack has no planning skill. Claude Code's plan mode works alongside it. For work that spans phases or stacked PRs, asking `/pstack-cc:poteto-mode` for a plan runs the [Multi-phase plan playbook](../poteto-mode/playbooks/multi-phase-plan.md), which writes the plan and doesn't implement it. For a design question, the Prototype playbook or `/pstack-cc:architect` settles it in code first.
 
-Principles are one-rule skills that `/pstack-cc:poteto-mode` reads and cites in its replies. The user rarely invokes one. They steer with the names instead, as in "apply prove it works. show me the real output." Typing `/principle-<name>` still loads one on demand. [Guide page 8](https://github.com/techRambam/pstack-cc/blob/main/reference/upstream-guide/08-principles.md) lists them.
+Principles are one-rule skills that `/pstack-cc:poteto-mode` reads and cites in its replies. The user rarely invokes one. They steer with the names instead, as in "apply prove it works. show me the real output." [Guide page 8](https://github.com/techRambam/pstack-cc/blob/main/reference/upstream-guide/08-principles.md) lists them.
 
 ## Fix a run that went wrong
 
@@ -133,7 +138,7 @@ Principles are one-rule skills that `/pstack-cc:poteto-mode` reads and cites in 
 | A question got treated as the next step of the last task | Say "new task", or say the turn doesn't need the mode. |
 | A new model choice had no effect | The file `/pstack-cc:setup-pstack` writes applies to new sessions. Start one. |
 | Runs cost more than expected | See the cost paragraph under Get set up. |
-| A skill didn't load on its own | Only `/pstack-cc:setup-pstack` loads from the user's words. The others load when the user types them or when `/pstack-cc:poteto-mode` runs them, and it doesn't run every skill. |
+| A skill didn't load on its own | Most skills load from their description, and Claude Code drops descriptions once the skill listing outgrows its budget. Type the skill, or raise `skillListingBudgetFraction` as the README says. Five skills load only when typed: `make-bot-ui`, `poteto-help`, `course`, `triage` and `to-questionnaire`. |
 | Parallel agents overwrote each other | Give each agent its own worktree (`isolation: "worktree"` on the Agent call). |
 | An overnight run moved but finished nothing | `/loop` needs a check that can pass or fail, not a duration. See [guide page 7](https://github.com/techRambam/pstack-cc/blob/main/reference/upstream-guide/07-overnight.md). |
 | The reply claims success from a green build | Ask for the real command, flow, stored value, or profile. That's the prove-it-works principle. |

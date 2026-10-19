@@ -1,6 +1,6 @@
 # Port record — pstack (Cursor) → pstack-cc (Claude Code)
 
-Upstream: `cursor/plugins` @ `e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a`, `pstack/` only.
+Upstream: `cursor/plugins` @ `d457567332aa6989e753ea289f30ea2bfbc80bc0`, `pstack/` only.
 Second upstream, Matt Pocock's skills: section 9.
 Every decision below is implemented in `transform/` or `overlay/`, never by hand-editing
 generated output.
@@ -14,7 +14,7 @@ generated output.
 | — | `hooks/hooks.json` | `MEASURED:` auto-discovered, not referenced from `plugin.json` (same as superpowers 6.3.0). |
 | plugin at the repo root (`source: "./"`) | `plugins/pstack-cc/` | An install copies the plugin directory, and at the root that meant `transform/`, `tests/`, `docs/` and `reference/` (images included) went into every cache. `MEASURED:` a marketplace install from the new layout contains only `LICENSE`, `agents`, `bin`, `hooks`, `skills`. |
 | `"version": "0.1.0"` | no `version` | `MEASURED:` the install reports `Version: 7ed20aaed090`, the commit SHA, so every push is an update. A changelog (`CHANGES.md`, enforced in CI) replaces the version as the record. |
-| — | `own/agents/read-only.md` | Cursor's `readonly: true` spawn flag has no Claude Code parameter; the agent (no Edit/Write/NotebookEdit/Agent) is the equivalent. `transform/readonly.py` rewrites the five spawn specs, failing on any count mismatch. |
+| — | `own/agents/read-only.md` | Cursor's `readonly: true` spawn flag has no Claude Code parameter; the agent (no Edit/Write/NotebookEdit/Agent) is the equivalent. `transform/readonly.py` rewrites the four spawn specs, failing on any count mismatch. |
 
 **`claude plugin validate` does not check SKILL.md.** `MEASURED:` reintroducing `mode`,
 `icon`, `color` and `reminder` on a skill still passed validation. `tests/lint-skills.py`
@@ -23,10 +23,10 @@ is the check that actually catches a bad port; `import.sh` runs it and fails on 
 ## 2. Frontmatter
 
 Dropped from `poteto-mode` (Cursor-only, no Claude Code meaning): `mode`, `icon`, `color`,
-`reminder`. Upstream dropped these keys itself at `d457567` and now ships slugged names, so the
-slugging below is a safety net that fires on nothing today. `icon` and `color` survive on
-`poteto-mode` and are still dropped. The stickiness hook's
-reminder is `hooks/reminder.txt`, kept by hand since upstream's `reminder:` went away.
+`reminder`. By `d457567` upstream had dropped `mode` and `reminder` itself and ships slugged
+names, so the slugging below fires on nothing today. `icon` and `color` are still upstream's and
+are still dropped. The stickiness hook's reminder is `hooks/reminder.txt`, kept by hand since
+upstream's `reminder:` went away.
 
 Names slugged to lowercase-hyphen: `Poteto Mode` → `poteto-mode`, `Make Bot UI` →
 `make-bot-ui`, `Comment Sicko` → `comment-sicko`. `is_background:` → `background:`.
@@ -35,7 +35,7 @@ Plugin agents are dispatched by their namespaced name, `pstack-cc:poteto-agent` 
 reference was slugged. It was not: it still spawned `subagent_type: "Comment Sicko"`, which
 resolves to nothing. The forbid gate now rejects the bare and display forms.
 
-**`disable-model-invocation` is dropped**, except on `make-bot-ui` and Matt Pocock's unrouted extras (section 9). An earlier version kept it
+**`disable-model-invocation` is dropped**, except on `make-bot-ui`, `poteto-help` and Matt Pocock's unrouted extras (section 9). An earlier version kept it
 on 49 skills on the theory that it only kept them out of automatic routing. In Claude Code it
 does more than that: when Claude calls a skill that carries it, the Skill tool **refuses** the
 call ([docs](https://code.claude.com/docs/en/skills)). Upstream's skills invoke one another:
@@ -77,7 +77,7 @@ upstream budget change (`-max` → `-medium`) maps instead of leaking:
 | Upstream | Here |
 |---|---|
 | `claude-opus-5-5-{max,xhigh,high,medium,low}` | `opus` |
-| `gpt-5.6-sol-max` | `gpt-5.6-sol`, a `panelist` seat (was `opus`; reflect's tooling reviewer, which needs files and MCP, stays `opus`) |
+| `gpt-5.6-sol-max` | gone: upstream dropped its GPT seats at `d457567`, so the skills' default panels are `opus` and `sonnet`. `setup-pstack`'s presets still add `panelist` seats. |
 | `grok-4.7-{…}-fast` | `sonnet` |
 | `claude-fable-5-1-thinking-*`, `grok-4.6-fast*` | `fable`, `sonnet` (pre-`e43c7ee`; kept so a return maps) |
 
@@ -126,12 +126,13 @@ modifier** and silently mangles the URL to `models/5-flashnerateContent`. Brace 
 
 ## 6. Known gaps — not solved, stated plainly
 
-- **`orch/store.ts` hard-requires Graphite (`gt`).** `graphiteFrontier()` and
-  `graphitePullRequest()` shell out to it; without `gt` the orchestrator computes no frontier.
-  Rewriting them against `gh` is unstarted work.
 - **`make-bot-ui`** was entirely Grok Bot / Cursor Automations (`api2.cursor.sh`,
   `update_state`, `SendToUser`). Rewritten onto published Artifacts and headless `claude -p`.
   The security posture is upstream's, unchanged; the mechanism is new and **untested**.
+- **`poteto-help`** was a Cursor help page throughout (Custom Modes, `/add-plugin`, upstream's
+  own Claude Code adapter, guide pages that do not ship). `overlay/skills/poteto-help/SKILL.md`
+  rewrites it for this plugin and keeps upstream's typed-only flag. Its guide links point at
+  upstream's Cursor guide in `reference/`.
 - **benny** (`reference/benny/`) needs Cursor Automations and is kept as reference only. Its
   operational discipline — immutable thread coordinates, coordinator is the only poster,
   children forbidden every write tool, fail closed — is harness-independent and worth reading
@@ -189,7 +190,7 @@ exempting whole files would let a real regression through.
 
 ## 9. Second upstream: Matt Pocock's skills
 
-Upstream: `mattpocock/skills` @ `4588b32ecab9ecc9fc8cc6b6c5e7d675b6004b0d`, the skills its
+Upstream: `mattpocock/skills` @ `49dd158d1076134a641b33efb035946536778336`, the skills its
 `.claude-plugin/plugin.json` promotes. `transform/mattpocock.tsv` classifies each one, and
 `transform/mattpocock.py` imports them after pstack's Cursor rules and before frontmatter
 normalisation.
