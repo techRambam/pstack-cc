@@ -18,6 +18,12 @@ Review whether the code achieves this intent well. Do NOT question the intent it
 
 {DIFF_OR_FILES}
 
+## Repo Standards
+
+{REPO_STANDARDS}
+
+A change that breaks one of these rules is a finding. The finding quotes the rule and names its file. If the standards say "none found", skip this lens.
+
 ## Review Rubric
 
 {RUBRIC_CONTENTS}
@@ -28,7 +34,7 @@ Review whether the code achieves this intent well. Do NOT question the intent it
 
 ## Instructions
 
-Review the code through every lens in the rubric and the code-quality lens above that you find relevant. Do not force lenses that don't apply. A simple bug fix does not need paragraphs about architectural integrity.
+Review the code through every lens in the rubric and the code-quality lens above that you find relevant. Also check the code against the repo standards. Do not force lenses that don't apply. A simple bug fix does not need paragraphs about architectural integrity.
 
 For each finding, provide:
 

@@ -191,3 +191,11 @@ s{a chart or diagram from `/visualize`}{a chart or diagram}g;
 s{a `/visualize` chart for numbers}{a chart for numbers}g;
 # --- the control skill is a set of tools here, not a file in upstream's monorepo.
 s{`git show origin/main:<control skill path>`}{Re-read the **Control skill** entry above for the surface this program drives}g;
+# --- interrogate reviews against the repo's own coding standards (Matt Pocock's code-review,
+# --- mattpocock/skills 3da8c01). Reviewers saw only the diff, the intent, a fixed rubric and a
+# --- code-quality lens, so a change that broke the repo's own rules passed review. The lead now
+# --- collects every file that documents how the repo's code is written and passes it to each reviewer.
+s{^(Package the diff or file contents with any surrounding context files the reviewers need to understand the code\.)$}{$1 Also search the repo for every file that documents how its code should be written. Examples are `CONTRIBUTING.md`, `CODING_STANDARDS.md`, style guides, and the coding conventions in `AGENTS.md` or `CLAUDE.md`. If `CONTRIBUTING.md` or `CODING_STANDARDS.md` exists, it must be on the list. Package the text of those files as the repo standards, or "none found" if the repo has none.} if $ARGV =~ m{/interrogate/SKILL\.md$};
+s{(with the stated intent, the diff or file contents,) (the rubric from)}{$1 the repo standards from Step 1, $2} if $ARGV =~ m{/interrogate/SKILL\.md$};
+s{^\{DIFF_OR_FILES\}$}{{DIFF_OR_FILES}\n\n## Repo Standards\n\n{REPO_STANDARDS}\n\nA change that breaks one of these rules is a finding. The finding quotes the rule and names its file. If the standards say "none found", skip this lens.} if $ARGV =~ m{/interrogate/references/reviewer-prompt\.md$};
+s{(that you find relevant\.) (Do not force lenses)}{$1 Also check the code against the repo standards. $2} if $ARGV =~ m{/interrogate/references/reviewer-prompt\.md$};
