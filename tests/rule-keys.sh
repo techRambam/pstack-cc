@@ -4,13 +4,14 @@
 # below edits a scratch copy of rules.pl and checks what audit.py reports. Offline:
 # the overlay half of the audit reads both upstream clones, so run import.sh first.
 #
-#   shifted      deleting a rule above the optional ones still silences the same rules,
-#                and a dead rule below the deletion is reported by its own line and text
+#   shifted      deleting the first rule still silences the same rules, and a dead rule
+#                below the deletion is reported by its own line and text
 #   gone         an optional entry whose rule was deleted fails the build
 #   ambiguous    an optional entry that two rules contain fails the build
 #   stale-ref    a [[cross-reference]] whose rule was deleted fails the build
-# Backticks in the expected texts below are literal, so single quotes are correct.
-# shellcheck disable=SC2016
+#
+# Every mutant picks its rules from the current rules.pl and optional-rules.txt, so an
+# upstream sync that adds, deletes or silences rules leaves this test valid.
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 [ -d "$REPO/upstream-mattpocock/.git" ] && [ -d "$REPO/upstream/pstack" ] || {
@@ -41,14 +42,45 @@ fresh() {
   ln -s "$REPO/upstream/pstack" "$R/upstream/pstack"
   ln -s "$REPO/upstream-mattpocock" "$R/upstream-mattpocock"
 }
-# Drop the rules.pl lines containing <text>.
-drop() { python3 - "$R/transform/rules.pl" "$1" <<'EOF'
-import pathlib, sys
-p, text = pathlib.Path(sys.argv[1]), sys.argv[2]
-lines = p.read_text().splitlines(keepends=True)
-kept = [l for l in lines if text not in l]
-assert len(kept) < len(lines), f"no rules.pl line contains {text!r}"
-p.write_text("".join(kept))
+# Read the scratch root's rules.pl and optional-rules.txt, or edit its rules.pl:
+#   first-free     print the first rule that no entry or cross-reference names
+#   last-free      print the last such rule
+#   entry          print the first optional entry
+#   ref            print the first cross-reference
+#   line <text>    print the line number of the one rule containing <text>
+#   shown <text>   print that rule as audit.py quotes it, cut to 88 characters
+#   drop <text>    delete the one rule containing <text>
+#   twice <text>   append a second copy of the one rule containing <text>
+rules() { python3 - "$R/transform/rules.pl" "$R/transform/optional-rules.txt" "$@" <<'EOF'
+import pathlib, re, sys
+rules_pl, optional, what, *arg = sys.argv[1:]
+path = pathlib.Path(rules_pl)
+lines = path.read_text().splitlines(keepends=True)
+rules = [(n, l.strip()) for n, l in enumerate(lines, 1) if re.match(r"^s[{/]", l.strip())]
+entries, refs = [], []
+for l in pathlib.Path(optional).read_text().splitlines():
+    l = l.strip()
+    if l.startswith("#"):
+        refs += re.findall(r"\[\[(.+?)\]\]", l)
+    elif l:
+        entries.append(l)
+free = [t for n, t in rules if not any(k in t for k in entries + refs)]
+if arg:
+    hits = [(n, t) for n, t in rules if arg[0] in t]
+    assert len(hits) == 1, f"{len(hits)} rules contain {arg[0]!r}, expected 1"
+    n, text = hits[0]
+if what == "first-free": print(free[0])
+elif what == "last-free": print(free[-1])
+elif what == "entry": print(entries[0])
+elif what == "ref": print(refs[0])
+elif what == "line": print(n)
+elif what == "shown": print(text[:88])
+elif what == "drop":
+    del lines[n - 1]
+    path.write_text("".join(lines))
+elif what == "twice":
+    path.write_text("".join(lines) + text + "\n")
+else: sys.exit(f"rules: unknown command {what}")
 EOF
 }
 # A counts file in the format build-counting-rules.py emits: every rule fired once,
@@ -66,30 +98,27 @@ EOF
   out="$(python3 "$R/transform/audit.py" "$R/counts" 2>&1)"; code=$?
 }
 
-# Expectations are derived from the files, not hardcoded, so an upstream sync that adds,
-# deletes or silences rules leaves this test valid.
 opt="$(grep -cv '^[[:space:]]*\(#\|$\)' "$REPO/transform/optional-rules.txt")"
 
 fresh; run_audit
 check "clean audit passes" 0 "0 dead, $opt marked optional" "$code" "$out"
 
-# A rule near the top shifts everything below it; the --squash rule then goes dead.
-squash='s{gh pr merge (\S+) --squash}'
-fresh; drop 's{\bgeneralPurpose\b}'; run_audit "$squash"
-at="$(grep -nF -- "$squash" "$R/transform/rules.pl" | cut -d: -f1)"
+# Deleting the first rule shifts every line below it; the last free rule then goes dead.
+fresh; first="$(rules first-free)"; last="$(rules last-free)"
+rules drop "$first"; run_audit "$last"
 check "shift: same $opt rules silenced" 1 "1 dead, $opt marked optional" "$code" "$out"
 check "shift: dead rule named by its own line" 1 \
-  "DEAD RULE rules.pl:$at fired 0 times -- upstream may have reworded it: $squash" \
+  "DEAD RULE rules.pl:$(rules line "$last") fired 0 times -- upstream may have reworded it: $(rules shown "$last")" \
   "$code" "$out"
 
-fresh; drop 'grok-4\.6-fast'; run_audit
-check "deleted optional rule fails" 1 '`grok-4\.6-fast` matches 0 rules' "$code" "$out"
+fresh; key="$(rules entry)"; rules drop "$key"; run_audit
+check "deleted optional rule fails" 1 "\`$key\` matches 0 rules" "$code" "$out"
 
-fresh; printf 's{\\bin Cursor\\b}{inside Claude Code}g;\n' >> "$R/transform/rules.pl"; run_audit
-check "ambiguous optional key fails" 1 '`\bin Cursor\b` matches 2 rules' "$code" "$out"
+fresh; key="$(rules entry)"; rules twice "$key"; run_audit
+check "ambiguous optional key fails" 1 "\`$key\` matches 2 rules" "$code" "$out"
 
-fresh; drop 's{\bTask tool\b}'; run_audit
-check "stale cross-reference fails" 1 'cross-reference: `\bTask tool\b` matches 0 rules' "$code" "$out"
+fresh; ref="$(rules ref)"; rules drop "$ref"; run_audit
+check "stale cross-reference fails" 1 "cross-reference: \`$ref\` matches 0 rules" "$code" "$out"
 
 printf '%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
