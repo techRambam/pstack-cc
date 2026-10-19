@@ -1,27 +1,48 @@
 # Rules that legitimately fire ZERO times against the current upstream ref.
-# audit.py fails the build on any other dead rule, so each line here is a claim
+# audit.py fails the build on any other dead rule, so each entry here is a claim
 # a human checked. Verified 2026-10-19 against d457567 by the import's rule counts.
 #
 # Re-check these when bumping UPSTREAM_REF: a rule listed here is silenced, so if
 # upstream starts using the phrasing it targets you will not be told.
+#
+# Each entry is a line of its own: a substring of the rule's line in rules.pl,
+# copied as written there (backslashes included), with the reason in the comment
+# lines under it. A comment names another rule the same way, with its substring
+# inside double square brackets. audit.py fails the build when an entry or a
+# reference matches no rule, or more than one, so inserting or deleting a rule
+# never shifts what this file means.
+# Include the `s{` prefix when the rule's whole pattern also appears inside a longer
+# rule's pattern.
 
-3    # .cursor/settings.json -- 0 in skills|agents (8 hits, all in automations/benny/,
-     # which is copied to reference/ untransformed as historical record). Defensive.
-4    # .cursor/automations/ -- same: 0 in scope, 26 hits only under benny.
-7    # `Task` tool (backticked) -- 0 anywhere upstream. Defensive variant.
-9    # "Task calls" -- 0 anywhere upstream. Defensive variant.
-10   # "the Task" -- 3 upstream hits, but rule 8 (`\bTask tool\b`) consumes them first;
-     # verified interrogate:36 emits "the Agent tool". Superseded, kept as a net.
-13   # claude-fable-5-1-thinking-* -- 0 since e43c7ee: upstream moved every Fable role
-     # to claude-opus-5-5-max (#414). Kept so a Fable slug coming back maps, not leaks.
-15   # grok-4.6-fast (bare) -- 0 since e43c7ee: upstream moved to grok-4.7-*-fast, which
-     # rule 14 maps. Kept for the 4.6 form; the forbid gate catches any other version.
-20   # `/create-skill` (backticked slash form) -- 1 upstream hit, in poteto-help, which
-     # overlay/ replaces. Defensive.
-26   # "in Cursor" -- 0 in skills|agents. Defensive.
-34   # `control-ui` or `control-cli` from `cursor-team-kit` -- superseded by the precise
-     # composite rules 38-39 added later, which match the real upstream phrasing.
-40   # `cursor-team-kit` (bare) -- upstream hits are consumed by rules 35-39 first, except
-     # 1 in poteto-help, which overlay/ replaces.
-43   # --interval string-default form -- upstream uses the positiveNumber form that
-     # rule 44 matches. Kept in case upstream switches back.
+\.cursor/settings\.json
+    # 0 in skills|agents (8 hits, all in automations/benny/, which is copied to
+    # reference/ untransformed as historical record). Defensive.
+\.cursor/automations/
+    # Same: 0 in scope, 26 hits only under benny.
+`Task` tool
+    # Backticked form. 0 anywhere upstream. Defensive variant.
+\bTask calls\b
+    # 0 anywhere upstream. Defensive variant.
+\bthe Task\b
+    # 3 upstream hits, but [[\bTask tool\b]] consumes them first; verified
+    # interrogate:36 emits "the Agent tool". Superseded, kept as a net.
+claude-fable-5-1-thinking-
+    # 0 since e43c7ee: upstream moved every Fable role to claude-opus-5-5-max (#414).
+    # Kept so a Fable slug coming back maps, not leaks.
+grok-4\.6-fast
+    # Bare form. 0 since e43c7ee: upstream moved to grok-4.7-*-fast, which
+    # [[grok-4\.7-]] maps. Kept for the 4.6 form; the forbid gate catches any other version.
+`/create-skill`
+    # Backticked slash form. 1 upstream hit, in poteto-help, which overlay/ replaces. Defensive.
+\bin Cursor\b
+    # 0 in skills|agents. Defensive.
+`control-ui` or `control-cli` from `cursor-team-kit`
+    # Superseded by the precise composite rules [[`cursor-team-kit` publishes]] and
+    # [[\(from `cursor-team-kit`\)]] added later, which match the real upstream phrasing.
+s{`cursor-team-kit`}
+    # Bare form. 10 upstream hits, all consumed first by the longer phrases in
+    # [[s{ from `cursor-team-kit`}]], [[`cursor-team-kit` publishes]] and
+    # [[\(from `cursor-team-kit`\)]], except 1 in poteto-help, which overlay/ replaces.
+\.option\(\s*"--interval <seconds>"
+    # String-default form. Upstream uses the positiveNumber form that
+    # [[positiveNumber, 60]] matches. Kept in case upstream switches back.

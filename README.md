@@ -41,7 +41,7 @@ instead of silent, and each one fails the build:
 | Guard | Catches |
 |---|---|
 | `transform/forbid.txt` | upstream reintroducing a Cursor dependency (`.cursor/`, a model slug, `--squash`, `generalPurpose`) |
-| `transform/audit.py` — dead rules | a rule that fired **zero** times, i.e. upstream reworded the prose it anchors on. Known-zero rules are listed with reasons in `transform/optional-rules.txt` |
+| `transform/audit.py` — dead rules | a rule that fired **zero** times, i.e. upstream reworded the prose it anchors on. Known-zero rules are listed with reasons in `transform/optional-rules.txt`, each named by a substring of its rules.pl line, never by position. An entry or cross-reference that matches no rule, or several, fails the build (`tests/rule-keys.sh`) |
 | `transform/audit.py` — overlay drift | upstream **rewriting a file `overlay/` replaces**. Without this the override silently wins and you never see their change. Re-accept deliberately: `./import.sh --accept-overlay` |
 | `transform/panels.py` | upstream renaming a panel skill, which would drop the cross-vendor section |
 

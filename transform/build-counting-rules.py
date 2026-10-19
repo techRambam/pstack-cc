@@ -21,12 +21,14 @@ out, n = [], 0
 # hash. Measured: all 47 rules reported 0 while their substitutions had plainly
 # been applied. Package globals survive the loop.
 out.append(f'BEGIN {{ $main::CF = "{counts}"; }}\n')
-for line in pathlib.Path(src).read_text(encoding="utf-8").splitlines():
+# Each count is keyed by the rule's LINE in rules.pl, not its ordinal: audit.py reads
+# the rule text back by that line, and nothing outside one import run stores the key.
+for lineno, line in enumerate(pathlib.Path(src).read_text(encoding="utf-8").splitlines(), 1):
     if re.match(r'^s[{/]', line.strip()):
         n += 1
         body = line.rstrip()
-        assert body.endswith(";"), f"rule {n} is not a single statement: {body[:60]}"
-        out.append(f'$main::C{{{n}}} += {body[:-1]};\n')
+        assert body.endswith(";"), f"rules.pl:{lineno} is not a single statement: {body[:60]}"
+        out.append(f'$main::C{{{lineno}}} += {body[:-1]};\n')
     else:
         out.append(line + "\n")
 out.append('''
