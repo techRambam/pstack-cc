@@ -17,7 +17,7 @@ Identify what to review from context:
 
 Package the diff or file contents with any surrounding context files the reviewers need to understand the code.
 
-Also collect the repo's coding standards. Search the files git tracks (`git ls-files`), skipping vendored and generated trees, for every file that documents how the code should be written, such as `CONTRIBUTING.md`, `CODING_STANDARDS.md`, a style guide, or the coding sections of `AGENTS.md` or `CLAUDE.md`. If `CONTRIBUTING.md` or `CODING_STANDARDS.md` exists, it must be on the list. Read each file from the base you diff against (`git show <base>:<path>`), so a change cannot loosen the rules it is judged by. If the diff edits one of these files, say so. Package the passages that govern how code is written, each under a heading with its repo-relative path, as the repo standards, or "none found" if the repo has none.
+Also collect the repo's coding standards. Search the files tracked at the base you diff against (`git ls-tree -r --name-only <base>`), skipping vendored and generated trees, for every file that documents how the code should be written, such as `CONTRIBUTING.md`, `CODING_STANDARDS.md`, a style guide, or the coding sections of `AGENTS.md` or `CLAUDE.md`. If `CONTRIBUTING.md` or `CODING_STANDARDS.md` exists, it must be on the list. Read each file from the base you diff against (`git show <base>:<path>`), so a change cannot loosen the rules it is judged by. If the diff edits, renames, or deletes one of these files, say so. Package the passages that govern how code is written, each under a heading with its repo-relative path, as the repo standards, or "none found" if the repo has none.
 
 ## Step 2, Intent
 
