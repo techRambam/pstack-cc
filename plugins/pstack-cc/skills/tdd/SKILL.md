@@ -23,8 +23,8 @@ A **seam** is the public boundary you test at, the interface where you observe b
 
 Where the seams come from depends on the phase.
 
-- **Deciding what to build.** Agree the seams with the user while grilling. The **to-spec** skill records them in the spec's Testing Decisions, and the **to-tickets** skill copies each ticket's share under Seams under test.
-- **Building from a spec or ticket.** Take the seams under test that the ticket names, else those in its parent spec's Testing Decisions. If neither names any, choose them yourself, write them down before the first test, and report them with the result. Do not stop to ask.
+- **Deciding what to build.** Agree the seams with the user while grilling, and give each proposed seam a one-line note on what it catches and what it misses. The **to-spec** skill records them in the spec's Testing Decisions, and the **to-tickets** skill copies each ticket's share under Seams under test.
+- **Building from a spec or ticket.** Take the seams under test that the ticket names, else those in its parent spec's Testing Decisions. If neither names any, choose them yourself, write each down with a one-line note on what it catches and what it misses before the first test, and report them with the result. Do not stop to ask.
 
 When the shape of the interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), call the Skill tool with "codebase-design" for the vocabulary. It is a reference to consult, not a session to run.
 
