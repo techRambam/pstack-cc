@@ -5,7 +5,7 @@ Two silent-failure modes this closes:
 
 1. DEAD RULE. A rule that fired zero times across the whole corpus is either
    obsolete or -- the dangerous case -- anchored on prose upstream has reworded.
-   Either way a human should look. List a rule number in transform/optional-rules.txt
+   Either way a human should look. Name the rule in transform/optional-rules.txt
    to say "zero is expected here" with a reason.
 
 2. OVERLAY DRIFT. overlay/ files are whole-file replacements applied with an
@@ -15,7 +15,7 @@ Two silent-failure modes this closes:
    sha256 of the upstream file it was based on; a mismatch fails the build until a
    human re-reads upstream's version and re-accepts.
 """
-import hashlib, pathlib, sys
+import hashlib, pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "upstream" / "pstack"
@@ -27,6 +27,7 @@ accept = "--accept-overlay" in sys.argv
 problems = []
 
 # --- 1. dead rules -------------------------------------------------------
+# Counts are keyed by the rule's line in rules.pl (build-counting-rules.py).
 totals = {}
 if counts_file.exists():
     for line in counts_file.read_text().splitlines():
@@ -34,18 +35,40 @@ if counts_file.exists():
             continue
         n, c = line.split("\t")
         totals[int(n)] = totals.get(int(n), 0) + int(c)
+rules = {i: l.strip() for i, l in
+         enumerate((ROOT/"transform"/"rules.pl").read_text(encoding="utf-8").splitlines(), 1)
+         if re.match(r'^s[{/]', l.strip())}
+
+# optional-rules.txt names each rule by a substring of its line, never by position: a
+# positional number shifted under every insert or delete above it and silently
+# silenced whichever rule moved into the slot. A key must match exactly one rule, and
+# so must every [[key]] cross-reference in its comments.
+def resolve(key, where):
+    hits = [i for i, text in rules.items() if key in text]
+    if len(hits) != 1:
+        lines = "".join(f"\n      rules.pl:{i}: {rules[i][:88]}" for i in hits)
+        problems.append(f"{where}: `{key}` matches {len(hits)} rules in transform/rules.pl, "
+                        f"expected exactly 1 -- lengthen the key until one rule contains it, "
+                        f"or drop it if that rule is gone.{lines}")
+        return None
+    return hits[0]
+
 optional = set()
 if OPTIONAL.exists():
-    for line in OPTIONAL.read_text().splitlines():
-        line = line.split("#")[0].strip()
-        if line.isdigit():
-            optional.add(int(line))
+    for k, line in enumerate(OPTIONAL.read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        where = f"optional-rules.txt:{k}"
+        if line.startswith("#"):
+            for ref in re.findall(r"\[\[(.+?)\]\]", line):
+                resolve(ref, f"{where} cross-reference")
+        elif line:
+            n = resolve(line, where)
+            if n is not None:
+                optional.add(n)
 dead = sorted(n for n, c in totals.items() if c == 0 and n not in optional)
-rules = [l for l in (ROOT/"transform"/"rules.pl").read_text().splitlines()
-         if l.strip().startswith("s{")]
 for n in dead:
-    text = rules[n-1][:88] if n-1 < len(rules) else "?"
-    problems.append(f"DEAD RULE {n} fired 0 times -- upstream may have reworded it:\n      {text}")
+    problems.append(f"DEAD RULE rules.pl:{n} fired 0 times -- upstream may have reworded it:\n"
+                    f"      {rules.get(n, '?')[:88]}")
 live = sum(1 for c in totals.values() if c > 0)
 print(f"    rules: {live}/{len(totals)} fired, {len(dead)} dead, {len(optional)} marked optional")
 
