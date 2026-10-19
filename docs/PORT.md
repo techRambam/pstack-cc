@@ -123,6 +123,7 @@ modifier** and silently mangles the URL to `models/5-flashnerateContent`. Brace 
 | `watch-pr` default `--interval` 60 → 300 | Its default mode is unbounded (`--timeout 0`) and hits a remote API. 300s is the floor for an unbounded poll. Override per-run if you need faster. |
 | Bugbot marker regex widened to `(?:CURSOR_)?AUTOMATION_ID:` | Works with any review bot that stamps an id, not only Cursor's. The rest of `bugbot-triage.md` is a rubric and is harness-independent. |
 | `interrogate` runs on every PR in Opening a PR (`opening-a-pr.md:9`), and Feature drops its "if the design is contested" step (`feature.md`) | Upstream runs `interrogate` on a lead's diff only when the design is contested, but always when a subagent opens the PR, so a lead's PR could reach the forge with no code review. One review before the PR opens, by models that did not write the code, covers every playbook that ends in Opening a PR. Upstream's guide still describes `interrogate` as an optional rung (`reference/upstream-guide/04-design.md`). |
+| `interrogate` reviews against the repo's own coding standards (`CONTRIBUTING.md`, `CODING_STANDARDS.md`, style guides), read from the base ref and fenced as data | From Matt Pocock's `code-review` (mattpocock/skills 3da8c01). Upstream reviewers saw only the diff, the intent, a fixed rubric and a code-quality lens, so a change that broke the repo's own rules passed review. Done as `transform/rules.pl` additions, so the dead-rule audit catches an upstream reword. |
 
 ## 6. Known gaps — not solved, stated plainly
 
@@ -208,7 +209,7 @@ the dead-rule audit catches an upstream reword of their anchors.
 | Both packs ship `teach` for different jobs | Matt's is imported as `course`. |
 | Matt's `prototype` puts UI variants on the real route; the Prototype playbook keeps sketches out of production source | `prototype` excluded. `wayfinder`'s call to it now points at the playbook (an asserted edit in `mattpocock.py`). |
 | Matt's `pr` template and the Opening a PR playbook prescribe different PR bodies | `pr` excluded. |
-| Matt's `code-review` clashes with the built-in `code-review` by name | Excluded. `interrogate` and `blast-radius` review here. |
+| Matt's `code-review` clashes with the built-in `code-review` by name | Excluded. `interrogate` and `blast-radius` review here. Its standards search is ported into `interrogate` (section 5). |
 | `unslop` would strip the emoji markers and coined terms ("frontier", "tracer bullet") Matt's templates depend on | The prose trigger in `poteto-mode` now says grilling rounds, specs, tickets and glossaries keep their own skills' templates and terms. |
 | Matt's user-only skills (`disable-model-invocation`, and `allow_implicit_invocation: false` in Codex's `agents/openai.yaml`) cannot be routed to | Both dropped on the core and merged skills, as for pstack's own. `MEASURED:` before this, Codex never showed its model 8 routed skills (`codex debug prompt-input`). Both kept on the extras (`triage`, `course`, `to-questionnaire`), which nothing routes to. The lint fails when the two harnesses disagree. |
 | Deciding had no playbook, while poteto-mode opens every task with a playbook's steps | `own/skills/poteto-mode/playbooks/deciding.md`, listed before Feature. It ends at approved tickets; building waits for the user. |
