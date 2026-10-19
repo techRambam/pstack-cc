@@ -12,7 +12,7 @@ SKILL_OK = {"name", "description", "allowed-tools", "user-invocable",
             "license", "paths", "model", "version", "argument-hint"}
 AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
             "background", "isolation", "permissionMode", "maxTurns", "skills",
-            "effort", "memory", "omitClaudeMd"}
+            "effort", "memory", "omitClaudeMd", "experimental"}
 # Slash-only on purpose: side effects (it wires a UI that triggers agent runs and holds
 # a server-side secret) and no pstack skill routes to it. Every other skill must stay
 # invocable by Claude, or the skills that route to it are refused.

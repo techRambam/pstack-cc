@@ -2,10 +2,12 @@
 """pstack-usage -- where did my Claude usage go?
 
 Reads Claude Code's own transcripts (~/.claude/projects/*/<session>.jsonl and
-their <session>/subagents/*.jsonl) and attributes token spend by model, by
+their <session>/subagents/**/*.jsonl) and attributes token spend by model, by
 subagent type and by session, weighted by each model's relative price. Plan
 limits are not published as token counts, so the weighting is the API price
-ratio: a proxy for which work drains a plan fastest, not an exact meter.
+ratio: a proxy for which work drains a plan fastest, not an exact meter. It also
+shows how much context each call re-reads and how often an expired cache made a
+call write the whole context again.
 
 Usage
   pstack-usage                    last 7 days, every project
@@ -15,11 +17,11 @@ Usage
 
 Reads only token counts and metadata. It never prints prompt or response text.
 """
-import argparse, collections, datetime, json, os, pathlib, sys
+import argparse, collections, datetime, json, math, os, pathlib, sys
 
 # Relative weight per token, Sonnet 5.5 = 1 (API list prices, $/MTok: Fable 5.1
 # 10/50, Opus 5.5 4/20, Sonnet 5.5 2/10, Haiku 4.5 1/5). Cache reads are 10% of
-# input; cache writes are billed above input, approximated here as 1.25x.
+# input. A cache write is 1.25x input with a 5-minute TTL and 2x with a 1-hour TTL.
 PRICE = {"fable": (5.0, 5.0), "mythos": (5.0, 5.0), "opus": (2.0, 2.0),
          "sonnet": (1.0, 1.0), "haiku": (0.5, 0.5)}
 
@@ -34,8 +36,10 @@ def family(model):
 
 def weight(fam, u):
     pin, pout = PRICE.get(fam, (1.0, 1.0))
+    # Transcripts split writes by TTL under cache_creation; a write with no split is 5-minute.
+    hour = (u.get("cache_creation") or {}).get("ephemeral_1h_input_tokens", 0)
     return (pin * (u.get("input_tokens", 0)
-                   + 1.25 * u.get("cache_creation_input_tokens", 0)
+                   + 1.25 * (u.get("cache_creation_input_tokens", 0) - hour) + 2 * hour
                    + 0.1 * u.get("cache_read_input_tokens", 0))
             + 5 * pout * u.get("output_tokens", 0)) / 1e6
 
@@ -68,7 +72,7 @@ def rows(path, since):
                 continue
             seen.add(key)
             u = m.get("usage") or {}
-            yield m.get("model"), u, d.get("effort")
+            yield t, m.get("model"), u, d.get("effort")
 
 
 def main():
@@ -86,32 +90,45 @@ def main():
     by_agent = collections.defaultdict(lambda: [0.0, 0])          # weight, spawns
     by_session = collections.defaultdict(float)
     by_effort = collections.defaultdict(float)
+    ctx = {"main sessions": [], "subagents": []}                  # tokens each call re-reads
+    rewrite = [0, 0.0]                                            # calls, weight
     main_w = sub_w = 0.0
+
+    def tally(path, role):
+        spent, prev = 0.0, None
+        for t, model, u, eff in rows(path, since):
+            fam = family(model)
+            w = weight(fam, u)
+            spent += w; by_effort[eff or "?"] += w
+            r = by_model[fam]
+            r[0] += w; r[1] += u.get("output_tokens", 0)
+            r[2] += (u.get("output_tokens_details") or {}).get("thinking_tokens", 0); r[3] += 1
+            written = u.get("cache_creation_input_tokens", 0)
+            ctx[role].append(u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0) + written)
+            # A subagent's cache lasts 5 minutes. A large write with almost no cache read after
+            # a longer gap is that cache expiring: the whole context, paid again.
+            if (role == "subagents" and prev and (t - prev).total_seconds() > 300
+                    and written > 30000 and u.get("cache_read_input_tokens", 0) < 0.2 * written):
+                rewrite[0] += 1; rewrite[1] += weight(fam, {"cache_creation_input_tokens": written,
+                                            "cache_creation": u.get("cache_creation")})
+            prev = t
+        return spent
 
     for proj in sorted(pathlib.Path(a.root).glob("*")):
         if not proj.is_dir() or a.project not in proj.name:
             continue
         for sess in proj.glob("*.jsonl"):
             label = f"{proj.name[-28:]}/{sess.stem[:8]}"
-            for model, u, eff in rows(sess, since):
-                w = weight(family(model), u)
-                main_w += w; by_session[label] += w; by_effort[eff or "?"] += w
-                r = by_model[family(model)]
-                r[0] += w; r[1] += u.get("output_tokens", 0)
-                r[2] += (u.get("output_tokens_details") or {}).get("thinking_tokens", 0); r[3] += 1
-            for sub in (proj / sess.stem / "subagents").glob("*.jsonl"):
+            w = tally(sess, "main sessions")
+            main_w += w; by_session[label] += w
+            # Workflow agents sit one level deeper, under subagents/workflows/<run>/.
+            for sub in (proj / sess.stem / "subagents").rglob("*.jsonl"):
                 try:
                     meta = json.loads(sub.with_suffix(".meta.json").read_text())
                 except (OSError, ValueError):
                     meta = {}
                 kind = meta.get("agentType", "?")
-                spent = 0.0
-                for model, u, eff in rows(sub, since):
-                    w = weight(family(model), u)
-                    spent += w; by_effort[eff or "?"] += w
-                    r = by_model[family(model)]
-                    r[0] += w; r[1] += u.get("output_tokens", 0)
-                    r[2] += (u.get("output_tokens_details") or {}).get("thinking_tokens", 0); r[3] += 1
+                spent = tally(sub, "subagents")
                 if spent:
                     sub_w += spent; by_session[label] += spent
                     by_agent[kind][0] += spent; by_agent[kind][1] += 1
@@ -124,6 +141,14 @@ def main():
     print(f"Weighted usage, last {a.days:g} days (Sonnet-5.5-equivalent MTok; a proxy, not a meter)\n")
     print(f"  main sessions  {pct(main_w)}")
     print(f"  subagents      {pct(sub_w)}\n")
+    print("Context re-read per API call   calls   average     p90")
+    for role, xs in ctx.items():
+        if xs:
+            xs.sort()
+            p90 = xs[math.ceil(0.9 * len(xs)) - 1]
+            print(f"  in {role:<26}  {len(xs):>6,}   {sum(xs) / len(xs) / 1000:>6.0f}k  {p90 / 1000:>5.0f}k")
+    print(f"Subagent cache rewrites after a 5+ minute idle gap: {rewrite[0]} call{'s' * (rewrite[0] != 1)}, "
+          f"{pct(rewrite[1]).strip()} of usage\n")
     print("By model             share   output tok   thinking tok   API calls")
     for f, (w, out, th, n) in sorted(by_model.items(), key=lambda x: -x[1][0]):
         print(f"  {f:<16}  {pct(w)}  {out:>11,}  {th:>13,}  {n:>10,}")
@@ -140,6 +165,16 @@ def main():
     # The levers, in the order they usually pay off. Thresholds are deliberately
     # coarse: this flags where to look, the numbers above say how much it matters.
     tips = []
+    calls = ctx["main sessions"]
+    if calls and sum(calls) / len(calls) > 150000:
+        tips.append("Main-session calls re-read over 150k tokens of context on average, and each "
+                    "call pays for all of it. Set \"autoCompactWindow\": 250000 in "
+                    "~/.claude/settings.json and start a fresh session for each new task.")
+    if rewrite[1] > 0.03 * total:
+        tips.append("Subagents that sat idle past their 5-minute cache wrote their whole context "
+                    "again. A 1-hour cache costs more to write, so give it only to agents that wait "
+                    "on tests or CI: `experimental: cacheTtl: 1h` in the agent's frontmatter, or "
+                    "\"subagentPromptCacheTtl\": \"1h\" in ~/.claude/settings.json for every subagent.")
     if by_model["fable"][0] + by_model["mythos"][0] > 0.2 * total:
         tips.append("Fable carries a large share. It costs 2.5x Opus per token: run the main "
                     "session on Opus (/model) and keep Fable out of pstack-models.md.")

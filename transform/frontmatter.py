@@ -39,6 +39,21 @@ def split_fm(text):
 # that structural instead of an instruction a fresh agent can skip.
 PRELOAD = {"poteto-agent": ["pstack-cc:poteto-mode"]}
 
+# Tools that load up front and that only the main conversation uses. Deferred tools cost
+# nothing until searched, so only up-front ones belong here. A spawned agent re-reads every
+# loaded schema on every call, and these cost 19k tokens per call (55k vs 36k at spawn,
+# measured 2026-10-13). Each agent in DENY gets them appended to its own disallowedTools.
+MAIN_THREAD_ONLY = ["Artifact", "Workflow", "ScheduleWakeup", "ReadNotifications", "ListAgents",
+                    "SendUserFile", "SuggestPluginInstall", "SuggestSkills", "SearchPlugins",
+                    "ReportFindings", "mcp__claude-code-remote", "mcp__visualize",
+                    "mcp__Claude_Code_iOS_Simulator", "mcp__ccd_session", "mcp__terminal"]
+DENY = {"poteto-agent": MAIN_THREAD_ONLY, "read-only": MAIN_THREAD_ONLY}
+
+# Keys added to an agent that lacks them; an upstream value that differs fails the import.
+# A builder waits on test runs and CI past the 5-minute subagent cache, so it keeps 1h.
+AGENT_KEYS = {"poteto-agent": {"effort": ["effort: high"],
+                               "experimental": ["experimental:", "  cacheTtl: 1h"]}}
+
 # Claude Code lists every skill's description in 1% of the context window, in characters
 # (30,000 on a 1M-context Opus), and drops descriptions past that (docs/PORT.md section 9).
 # Upstream's principle descriptions spent a fifth of that. Nothing finds a principle by its
@@ -92,6 +107,23 @@ for base in sys.argv[1:]:
         if agent and not any(l.startswith("skills:") for l in out):
             out += ["skills:"] + [f"  - {s}" for s in PRELOAD[p.stem]]
             touched = True
+        for key, lines in (AGENT_KEYS.get(p.stem, {}) if p.parent.name == "agents" else {}).items():
+            if not any(l.startswith(f"{key}:") for l in out):
+                out += lines
+                touched = True
+            elif not all(l in out for l in lines):
+                sys.exit(f"{p}: upstream now sets {key}:, which transform/frontmatter.py also adds")
+        if p.parent.name == "agents" and p.stem in DENY:
+            i = next((n for n, l in enumerate(out) if l.startswith("disallowedTools:")), None)
+            have = [] if i is None else [t.strip() for t in out[i].split(":", 1)[1].split(",") if t.strip()]
+            tools = have + [t for t in DENY[p.stem] if t not in have]
+            if tools != have:
+                line = "disallowedTools: " + ", ".join(tools)
+                if i is None:
+                    out.append(line)
+                else:
+                    out[i] = line
+                touched = True
         if touched:
             p.write_text("---\n" + "\n".join(out) + "\n---\n" + body, encoding="utf-8")
             changed += 1
