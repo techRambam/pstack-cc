@@ -256,8 +256,9 @@ hook) reproduces it:
 | `/goal <text>` | sets a standing objective (emulates Cursor's `/goal`) |
 | `/goal clear` | clears it |
 
-The reminder text is extracted from upstream's own frontmatter at import time, so it tracks
-upstream rather than drifting.
+The reminder text is `hooks/reminder.txt`. It used to be extracted from upstream's `reminder:`
+key at import time. Upstream dropped that key at `d457567`, so the port keeps the last wording
+and edits it by hand.
 
 Typing `/poteto-mode` in every new session gets old. `hooks/poteto-auto-arm.sh` is a
 `SessionStart` hook that pins the mode for you, and it is off until you ask for it:

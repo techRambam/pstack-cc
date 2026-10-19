@@ -26,3 +26,5 @@ mcps/
 readonly judge
 origin/main:pstack/
 `pstack/
+cursor-grok-
+`composer-

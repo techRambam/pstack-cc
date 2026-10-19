@@ -7,31 +7,32 @@ so a ported `readonly: true` silently spawned a general-purpose agent that could
 edit the tree and fan out. own/agents/read-only.md is the real equivalent: the
 same tools minus Edit, Write, NotebookEdit and Agent, with MCP intact.
 
-The spawn specs span lines (`subagent_type`, then `model`, then `readonly`), so
-this is a multi-line rewrite rather than a rules.pl substitution. Every pattern
-has an expected count per file; a miss fails the import, like a dead rule.
+Each spawn spec names `subagent_type` and `readonly` together, so it is rewritten
+as one unit here rather than as two rules.pl substitutions. Every pattern has an
+expected count per file; a miss fails the import, like a dead rule.
 """
 import pathlib, re, sys
 
 PLUGIN = pathlib.Path(__file__).resolve().parent.parent / "plugins" / "pstack-cc"
-RO = "`pstack-cc:read-only` (no edit tools, no `Agent`: it reports and never changes the tree)"
+RO_WHY = "(no edit tools, no `Agent`: it reports and never changes the tree)"
+RO_SPEC = f'`subagent_type: "pstack-cc:read-only"` {RO_WHY}'
 
-SPEC = re.compile(r"- `subagent_type`: `general-purpose`\n(- `model`: [^\n]*\n)- `readonly`: `true`\n")
 FIXES = [
     # file, pattern, replacement, expected count
-    ("skills/how/SKILL.md", SPEC, rf"- `subagent_type`: {RO}\n\1", 3),
-    ("skills/interrogate/SKILL.md", SPEC, rf"- `subagent_type`: {RO}\n\1", 1),
+    ("skills/how/SKILL.md", re.compile(
+        r"Every spawn is a Task subagent with `subagent_type: general-purpose` and `readonly: true`\."),
+     f"Every spawn is an `Agent` subagent with {RO_SPEC}.", 1),
+    ("skills/interrogate/SKILL.md", re.compile(
+        r"Each reviewer gets `subagent_type: general-purpose`, `readonly: true`, and "),
+     f"Each reviewer gets {RO_SPEC}, and ", 1),
     ("skills/arena/SKILL.md", re.compile(r"Spawn one readonly judge subagent on that model\."),
      "Spawn one judge subagent on that model with `subagent_type: \"pstack-cc:read-only\"`.", 1),
     # readonly: false meant "keep MCP". general-purpose already has MCP here.
     ("skills/why/SKILL.md", re.compile(
-        r"- `readonly`: `false` \(agent mode\)\. \*\*Do not use readonly/Ask mode\.\*\* It strips MCP access, "
-        r"which disables MCP-backed investigators entirely\. "),
-     "- Keep `general-purpose`, not `pstack-cc:read-only`: investigators need MCP and Bash. ", 1),
-    ("skills/why/SKILL.md", re.compile(
-        r"- `readonly`: `false` \(agent mode\)\. The synthesizer's quality check spot-verifies citations, "
-        r"which can require MCP access\. Readonly/Ask mode strips MCPs and defeats that\."),
-     "- Keep `general-purpose`: the synthesizer's quality check spot-verifies citations, which can require MCP access.", 1),
+        r"Every spawn is `general-purpose` with `readonly: false` \(agent mode\)\. \*\*Do not use readonly/Ask mode\.\*\* "
+        r"It strips MCP access, which disables the MCP-backed investigators and the synthesizer's citation spot-checks\. "),
+     "Every spawn is `general-purpose`, never `pstack-cc:read-only`. Investigators need MCP and Bash, "
+     "and the synthesizer's citation spot-checks can need MCP. ", 1),
 ]
 
 bad = []

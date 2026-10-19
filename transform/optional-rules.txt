@@ -14,12 +14,12 @@
      # verified interrogate:36 emits "the Agent tool". Superseded, kept as a net.
 13   # claude-fable-5-1-thinking-* -- 0 since e43c7ee: upstream moved every Fable role
      # to claude-opus-5-5-max (#414). Kept so a Fable slug coming back maps, not leaks.
-16   # grok-4.6-fast (bare) -- 0 since e43c7ee: upstream moved to grok-4.7-*-fast, which
-     # rule 15 maps. Kept for the 4.6 form; the forbid gate catches any other version.
-23   # `/create-skill` (backticked slash form) -- 0 anywhere upstream. Defensive.
-29   # "in Cursor" -- 0 in skills|agents. Defensive.
-37   # `control-ui` or `control-cli` from `cursor-team-kit` -- superseded by the precise
-     # composite rules 41-42 added later, which match the real upstream phrasing.
-43   # `cursor-team-kit` (bare) -- 10 upstream hits, all consumed by rules 38-42 first.
-46   # --interval string-default form -- upstream uses the positiveNumber form that
-     # rule 47 matches. Kept in case upstream switches back.
+15   # grok-4.6-fast (bare) -- 0 since e43c7ee: upstream moved to grok-4.7-*-fast, which
+     # rule 14 maps. Kept for the 4.6 form; the forbid gate catches any other version.
+20   # `/create-skill` (backticked slash form) -- 0 anywhere upstream. Defensive.
+26   # "in Cursor" -- 0 in skills|agents. Defensive.
+34   # `control-ui` or `control-cli` from `cursor-team-kit` -- superseded by the precise
+     # composite rules 38-39 added later, which match the real upstream phrasing.
+40   # `cursor-team-kit` (bare) -- 10 upstream hits, all consumed by rules 35-39 first.
+43   # --interval string-default form -- upstream uses the positiveNumber form that
+     # rule 44 matches. Kept in case upstream switches back.

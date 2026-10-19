@@ -23,8 +23,10 @@ is the check that actually catches a bad port; `import.sh` runs it and fails on 
 ## 2. Frontmatter
 
 Dropped from `poteto-mode` (Cursor-only, no Claude Code meaning): `mode`, `icon`, `color`,
-`reminder`. `reminder` is not discarded — it is extracted to `hooks/reminder.txt` and used by
-the stickiness hook, so it tracks upstream.
+`reminder`. Upstream dropped these keys itself at `d457567` and now ships slugged names, so the
+slugging below is a safety net that fires on nothing today. `icon` and `color` survive on
+`poteto-mode` and are still dropped. The stickiness hook's
+reminder is `hooks/reminder.txt`, kept by hand since upstream's `reminder:` went away.
 
 Names slugged to lowercase-hyphen: `Poteto Mode` → `poteto-mode`, `Make Bot UI` →
 `make-bot-ui`, `Comment Sicko` → `comment-sicko`. `is_background:` → `background:`.
