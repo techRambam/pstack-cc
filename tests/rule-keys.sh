@@ -66,13 +66,20 @@ EOF
   out="$(python3 "$R/transform/audit.py" "$R/counts" 2>&1)"; code=$?
 }
 
-fresh; run_audit
-check "clean audit passes" 0 "0 dead, 12 marked optional" "$code" "$out"
+# Expectations are derived from the files, not hardcoded, so an upstream sync that adds,
+# deletes or silences rules leaves this test valid.
+opt="$(grep -cv '^[[:space:]]*\(#\|$\)' "$REPO/transform/optional-rules.txt")"
 
-fresh; drop 'gpt-5\.6-sol-max'; run_audit 'gh pr merge (\S+) --squash'
-check "shift: same 12 rules silenced"   1 "1 dead, 12 marked optional" "$code" "$out"
+fresh; run_audit
+check "clean audit passes" 0 "0 dead, $opt marked optional" "$code" "$out"
+
+# A rule near the top shifts everything below it; the --squash rule then goes dead.
+squash='s{gh pr merge (\S+) --squash}'
+fresh; drop 's{\bgeneralPurpose\b}'; run_audit "$squash"
+at="$(grep -nF -- "$squash" "$R/transform/rules.pl" | cut -d: -f1)"
+check "shift: same $opt rules silenced" 1 "1 dead, $opt marked optional" "$code" "$out"
 check "shift: dead rule named by its own line" 1 \
-  'DEAD RULE rules.pl:27 fired 0 times -- upstream may have reworded it: s{gh pr merge (\S+) --squash}' \
+  "DEAD RULE rules.pl:$at fired 0 times -- upstream may have reworded it: $squash" \
   "$code" "$out"
 
 fresh; drop 'grok-4\.6-fast'; run_audit
