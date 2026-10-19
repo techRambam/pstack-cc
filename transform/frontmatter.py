@@ -4,9 +4,6 @@
 Claude Code rejects unknown keys in a PLUGIN skill's frontmatter, and requires
 agent/skill names to be lowercase-and-hyphens. Cursor allows both. One key means
 something stricter here than upstream intends, so it goes too (see DROP).
-
-Side effect: poteto-mode's `reminder:` is extracted to hooks/reminder.txt so the
-stickiness hook injects upstream's own wording and picks up changes on re-import.
 """
 import re, sys, pathlib
 
@@ -19,7 +16,6 @@ DROP = {"mode", "icon", "color", "reminder"}          # Cursor-only skill keys
 # triggering on unrelated requests.
 DROP |= {"disable-model-invocation"}
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-PLUGIN = ROOT / "plugins" / "pstack-cc"
 # Matt's skills that nothing in pstack routes to keep his own invocation flags: the
 # routing argument above is the only reason to drop them, and it does not apply.
 KEEP_FLAGS = {line.split("\t")[2] for line in
@@ -65,7 +61,6 @@ AGENT_KEYS = {"poteto-agent": {"effort": ["effort: high"],
 PRINCIPLE_DESCRIPTION = '"poteto-mode principle"'
 
 changed = dropped = renamed = 0
-reminder = None
 
 for base in sys.argv[1:]:
     for p in sorted(pathlib.Path(base).rglob("*.md")):
@@ -84,8 +79,6 @@ for base in sys.argv[1:]:
                 out.append(line)
                 continue
             key, val = m.group(1), m.group(2)
-            if key == "reminder" and "poteto-mode" in str(p):
-                reminder = val.strip().strip('"').strip("'")
             if key == "disable-model-invocation" and p.parent.name in KEEP_FLAGS:
                 out.append(line)
                 continue
@@ -134,10 +127,5 @@ for base in sys.argv[1:]:
         if touched:
             p.write_text("---\n" + "\n".join(out) + "\n---\n" + body, encoding="utf-8")
             changed += 1
-
-if reminder:
-    (PLUGIN / "hooks").mkdir(exist_ok=True)
-    (PLUGIN / "hooks" / "reminder.txt").write_text(reminder + "\n", encoding="utf-8")
-    print(f"    reminder extracted -> hooks/reminder.txt")
 
 print(f"    frontmatter: {changed} files, {dropped} keys dropped, {renamed} names slugged")

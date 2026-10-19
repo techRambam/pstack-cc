@@ -1,6 +1,6 @@
 # Rules that legitimately fire ZERO times against the current upstream ref.
 # audit.py fails the build on any other dead rule, so each entry here is a claim
-# a human checked. Verified 2026-10-04 against e43c7ee by grepping upstream.
+# a human checked. Verified 2026-10-19 against d457567 by the import's rule counts.
 #
 # Re-check these when bumping UPSTREAM_REF: a rule listed here is silenced, so if
 # upstream starts using the phrasing it targets you will not be told.
@@ -33,7 +33,7 @@ grok-4\.6-fast
     # Bare form. 0 since e43c7ee: upstream moved to grok-4.7-*-fast, which
     # [[grok-4\.7-]] maps. Kept for the 4.6 form; the forbid gate catches any other version.
 `/create-skill`
-    # Backticked slash form. 0 anywhere upstream. Defensive.
+    # Backticked slash form. 1 upstream hit, in poteto-help, which overlay/ replaces. Defensive.
 \bin Cursor\b
     # 0 in skills|agents. Defensive.
 `control-ui` or `control-cli` from `cursor-team-kit`
@@ -42,7 +42,7 @@ grok-4\.6-fast
 s{`cursor-team-kit`}
     # Bare form. 10 upstream hits, all consumed first by the longer phrases in
     # [[s{ from `cursor-team-kit`}]], [[`cursor-team-kit` publishes]] and
-    # [[\(from `cursor-team-kit`\)]].
+    # [[\(from `cursor-team-kit`\)]], except 1 in poteto-help, which overlay/ replaces.
 \.option\(\s*"--interval <seconds>"
     # String-default form. Upstream uses the positiveNumber form that
     # [[positiveNumber, 60]] matches. Kept in case upstream switches back.

@@ -16,7 +16,8 @@ AGENT_OK = {"name", "description", "tools", "disallowedTools", "model", "color",
 # Slash-only on purpose: side effects (it wires a UI that triggers agent runs and holds
 # a server-side secret) and no pstack skill routes to it. Every other skill must stay
 # invocable by Claude, or the skills that route to it are refused.
-SLASH_ONLY_OK = {"make-bot-ui"}
+# poteto-help is typed-only upstream too, and nothing routes to it.
+SLASH_ONLY_OK = {"make-bot-ui", "poteto-help"}
 # Matt Pocock's skills that nothing routes to keep his flags (transform/frontmatter.py).
 SLASH_ONLY_OK |= {line.split("\t")[2] for line in
                   (ROOT.parent.parent / "transform" / "mattpocock.tsv").read_text().splitlines()

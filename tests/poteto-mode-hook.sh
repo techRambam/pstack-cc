@@ -23,7 +23,7 @@ check() { # name, expect(has|empty), needle
 check "quiet when nothing armed"        empty ""             "$(fire 'just a normal question')"
 check "/poteto-mode arms + injects"     has   "poteto-mode is pinned" "$(fire '/poteto-mode build the thing')"
 check "stays armed on a later turn"     has   "poteto-mode is pinned" "$(fire 'ok now do the next bit')"
-check "reminder text is upstream's"     has   "Playbook match or rigor needed" "$(fire 'another turn')"
+check "reminder text is reminder.txt's"     has   "Playbook match or rigor needed" "$(fire 'another turn')"
 check "playbook instruction present"    has   "copy its steps into a todo list verbatim" "$(fire 'another turn')"
 check "/goal stores the objective"      has   "ship the release by friday" "$(fire '/goal ship the release by friday')"
 check "goal persists next turn"         has   "Standing goal for this session" "$(fire 'unrelated follow-up')"

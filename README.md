@@ -2,7 +2,7 @@
 
 [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (@poteto),
 adapted for **Claude Code**, with [Matt Pocock's skills](https://github.com/mattpocock/skills)
-folded into the same workflow. 68 skills, 24 playbooks, 24 principles, 3 agents.
+folded into the same workflow. 74 skills, 24 playbooks, 24 principles, 3 agents.
 Works in local sessions and in [cloud sessions](#cloud-sessions).
 
 Upstream is a *Cursor* plugin — it has a `.cursor-plugin/plugin.json` and no Claude Code
@@ -19,7 +19,7 @@ through:
 | Piece | Job |
 |---|---|
 | `transform/rules.pl` | deterministic substitutions (paths, tool names, model slugs, merge policy) |
-| `transform/frontmatter.py` | drops Cursor-only keys, slugs names, hides principles from `/`, preloads poteto-mode into `poteto-agent`, extracts the reminder |
+| `transform/frontmatter.py` | drops Cursor-only keys, slugs names, hides principles from `/`, preloads poteto-mode into `poteto-agent` |
 | `transform/readonly.py` | maps Cursor's `readonly` spawn flag onto the `pstack-cc:read-only` agent |
 | `overlay/` | whole-file replacements for what a regex cannot fix |
 | `own/` | files this port adds that upstream never had (the `read-only` agent); fails if upstream later ships the same path |
@@ -118,8 +118,8 @@ Everything is namespaced (`/pstack-cc:how`, `/pstack-cc:tdd`), so nothing shadow
 or another pack. Upstream marks its skills `disable-model-invocation: true`. Claude Code reads
 that flag more strictly than upstream intends: it refuses Claude's own Skill tool call, so
 poteto-mode could not route to `/how`, `/why` or a principle skill. The flag is therefore
-dropped from every skill except `make-bot-ui` and Matt Pocock's unrouted extras (`triage`,
-`course`, `to-questionnaire`), which nothing routes to. The descriptions are explicit ("Use for /how"),
+dropped from every skill except `make-bot-ui`, `poteto-help` and Matt Pocock's unrouted extras
+(`triage`, `course`, `to-questionnaire`), which nothing routes to. The descriptions are explicit ("Use for /how"),
 so the skills stay out of unrelated requests. The 24 `principle-*` skills are
 `user-invocable: false` instead: other skills route to them, but they stay out of your `/` menu.
 
@@ -227,8 +227,9 @@ own. Three controls, in the order they pay off:
    name them. **With no config at all, the hook applies `balanced`.** `PSTACK_CC_BUDGET=max`
    turns the caps off.
 2. **Non-Claude panel seats.** `gpt-*`, `gemini-*` and `vendor:model` seats run through
-   `panelist` and cost nothing against Claude limits. The skills' own default panels now use a
-   GPT seat where upstream does, instead of the second Opus seat this port used to put there.
+   `panelist` and cost nothing against Claude limits. Upstream dropped its GPT seats, so the
+   skills' own default panels are `opus` and `sonnet`. `/pstack-cc:setup-pstack`'s presets add
+   the non-Claude seats.
 3. **Main session.** Spawns without a `model` inherit the main session's model and effort.
    Per token, Fable 5.1 costs 2.5× Opus 5.5, which costs 2× Sonnet 5.5, which costs 2× Haiku
    4.5. `pstack-cc:read-only` seats pin `effort: high` so they don't inherit `xhigh` or `max`.
@@ -245,8 +246,8 @@ ratios: a good proxy for what drains a plan, not an exact meter.
 
 ## poteto-mode is sticky here
 
-Cursor pins a mode with `Opt+Enter` and re-injects its `reminder:` every turn. Claude Code
-ignores both frontmatter keys, so `hooks/poteto-mode.sh` (a plugin-shipped `UserPromptSubmit`
+Cursor pins a mode with `Opt+Enter` and re-injects a reminder every turn. Claude Code has
+neither, so `hooks/poteto-mode.sh` (a plugin-shipped `UserPromptSubmit`
 hook) reproduces it:
 
 | Type | Effect |
@@ -256,8 +257,9 @@ hook) reproduces it:
 | `/goal <text>` | sets a standing objective (emulates Cursor's `/goal`) |
 | `/goal clear` | clears it |
 
-The reminder text is extracted from upstream's own frontmatter at import time, so it tracks
-upstream rather than drifting.
+The reminder text is `hooks/reminder.txt`. It used to be extracted from upstream's `reminder:`
+key at import time. Upstream dropped that key at `d457567`, so the port keeps the last wording
+and edits it by hand.
 
 Typing `/poteto-mode` in every new session gets old. `hooks/poteto-auto-arm.sh` is a
 `SessionStart` hook that pins the mode for you, and it is off until you ask for it:

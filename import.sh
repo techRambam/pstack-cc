@@ -10,12 +10,12 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UPSTREAM_REPO="https://github.com/cursor/plugins.git"
-UPSTREAM_REF="e43c7ee26e0038c6c1fa8380dd34ce86ff94cb2a"
+UPSTREAM_REF="d457567332aa6989e753ea289f30ea2bfbc80bc0"
 SRC="$ROOT/upstream/pstack"
 # Second upstream: Matt Pocock's skills. Which of them ship, and how, is
 # transform/mattpocock.tsv; transform/mattpocock.py fails on anything it does not classify.
 MATT_REPO="https://github.com/mattpocock/skills.git"
-MATT_REF="4588b32ecab9ecc9fc8cc6b6c5e7d675b6004b0d"
+MATT_REF="49dd158d1076134a641b33efb035946536778336"
 MATT="$ROOT/upstream-mattpocock"
 # The installable plugin. Everything else in this repo (transform/, tests/, docs/,
 # reference/) is the generator and stays out of every install.

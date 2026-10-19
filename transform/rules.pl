@@ -20,15 +20,12 @@ s{\bis_background:}{background:}g;
 # --- model slugs -> Claude Code model aliases --------------------------
 s{\bclaude-opus-5-5-(?:max|xhigh|high|medium|low)\b}{opus}g;
 s{\bclaude-fable-5-1-thinking-(?:max|xhigh|high|medium|low)\b}{fable}g;
-s{\bgpt-5\.6-sol-max\b}{gpt-5.6-sol}g;
 s{\bgrok-4\.7-(?:max|xhigh|high|medium|low)-fast\b}{sonnet}g;
 s{\bgrok-4\.6-fast\b}{sonnet}g;
 
 # --- merge policy: the house rule is a merge commit, never a squash ----
 s{gh pr merge (\S+) --squash}{gh pr merge $1 --merge}g;
-s{origin pr merge (\S+) --squash}{gh pr merge $1 --merge}g;
 s{\bsquash-merges\b}{merges (--merge, never a squash)}g;
-s{\bsquash it with\b}{land it with}g;
 
 # --- Cursor built-ins -> Claude Code equivalents -----------------------
 s{Cursor's built-in for authoring SKILL\.md files}{use the anthropic-skills:skill-creator skill}g;
@@ -82,7 +79,7 @@ s{node pstack/skills/poteto-mode/scripts/check-plan\.mjs}{node scripts/check-pla
 s{the `pstack-models\.mdc` rule}{`~/.claude/pstack-models.md`}g;
 
 # --- plugin agents are namespaced <plugin>:<agent>; a bare or display name does not resolve.
-s{subagent_type: "Comment Sicko"}{subagent_type: "pstack-cc:comment-sicko"}g;
+s{subagent_type: "comment-sicko"}{subagent_type: "pstack-cc:comment-sicko"}g;
 s{subagent_type: "poteto-agent"}{subagent_type: "pstack-cc:poteto-agent"}g;
 s{Spawn `Task` with}{Spawn an `Agent` with}g;
 s{`Task`}{`Agent`}g;
@@ -114,30 +111,24 @@ s{Cursor's built-in babysit skill}{any other installed babysit skill}g;
 s{Cursor's `/loop` command \(a built-in, not a pstack skill\)}{Claude Code's `/loop` skill (a built-in, not a pstack skill)}g;
 s{list the available MCPs from the Cursor environment\. Use the available-tools map when present\. Otherwise inspect the `mcps/` directory Cursor exposes for enabled MCP servers\.}{list the MCP servers connected to this session: their tools are named `mcp__<server>__<tool>`, and deferred ones are found with ToolSearch.}g;
 s{each a Cursor cloud agent,}{each a background `Agent` in its own worktree,}g;
-s{One Cursor cloud agent per PR}{One background `Agent` per PR, in its own worktree,}g;
+s{Each owner is a Cursor cloud agent that}{Each owner is a background `Agent`, in its own worktree, that}g;
 s{with Cursor's `/loop` command}{with Claude Code's `/loop` skill}g;
 s{the background agent's status in the Cursor dashboard}{the background agent's last output}g;
-
-# --- upstream's GPT panel seat is a GPT seat again, through bin/panelist, instead of
-# --- a second opus: same model diversity upstream designed, and it does not count
-# --- against Claude plan limits. reflect's tooling reviewer needs files and MCP,
-# --- which a panelist seat does not have, so that one stays an Anthropic agent.
-s{\| `reflect tooling` \| `gpt-5\.6-sol` \|}{| `reflect tooling` | `opus` |}g;
 
 # --- poteto-agent: upstream says "Read the `poteto-mode` skill's SKILL.md" with no path,
 # --- which in Cursor resolves through .cursor/skills/. A plugin skill here has no fixed
 # --- path, and a poteto-agent spawned 2026-09-28 looked for ~/.claude/skills/poteto-mode/,
 # --- found nothing and worked without it. Name the Skill tool, the one route that resolves.
-s{Read the `poteto-mode` skill's `SKILL\.md` in full before doing any work, including its inline Principles index\. Navigate to a leaf `principle-\*` skill whenever you apply that principle\.}{Before any work, read the `pstack-cc:poteto-mode` skill's `SKILL.md` in full, including its inline Principles index. This agent's `skills:` frontmatter preloads it; if its text is not already in your context, your first action is to invoke the Skill tool with `pstack-cc:poteto-mode`. Never look for it on disk: a plugin's skills are not under `~/.claude/skills/`, and searching there finds nothing. Whenever you apply a principle, load its leaf `principle-*` skill the same way, through the Skill tool with the `pstack-cc:` prefix (for example `pstack-cc:principle-prove-it-works`).}g;
+s{Read the `poteto-mode` skill's `SKILL\.md` in full before doing any work, including its inline Principles index\. Use the absolute path your parent gave you\..*?Navigate to a leaf `principle-\*` skill whenever you apply that principle\.}{Before any work, read the `pstack-cc:poteto-mode` skill's `SKILL.md` in full, including its inline Principles index. This agent's `skills:` frontmatter preloads it; if its text is not already in your context, your first action is to invoke the Skill tool with `pstack-cc:poteto-mode`. Never look for it on disk: a plugin's skills are not under `~/.claude/skills/`, and searching there finds nothing. Whenever you apply a principle, load its leaf `principle-*` skill the same way, through the Skill tool with the `pstack-cc:` prefix (for example `pstack-cc:principle-prove-it-works`).}g;
 
 # --- Matt Pocock's skills (transform/mattpocock.tsv): one workflow, split by phase ---
 # User decision 2026-10-05: grill while deciding WHAT to build, autonomous while building
 # it, GitHub issues as the record. These lines are the router's half of that; the skills
 # themselves are imported by transform/mattpocock.py.
 s{^(- Nontrivial change, architecture decision, or "are we sure\?" → the \*\*how\*\* skill\.)$}{$1\n- Deciding what to build (a new idea, a fuzzy feature, scope or naming still open, no agreed spec or ticket) → the Deciding playbook (`playbooks/deciding.md`). This phase is the human's. Ask, and treat grilling's confirmation as the gate. Facts stay yours to find.\n- Building from an agreed spec or ticket → the Feature or Bug fix playbook, autonomous from here. Fetch the ticket the way `docs/agents/issue-tracker.md` says (on GitHub, `gh issue view <n> --comments`). Its acceptance criteria are the verify predicate. The work closes the ticket on merge, never before. On GitHub or GitLab, put `Closes #<n>` in the PR or MR body. On local markdown, set the ticket file's `Status:` to `resolved` in the same commit. Don't re-grill what the spec settled. Test at the seams under test the ticket names, else its parent spec's, with the **tdd** skill. A queue of tickets → Feature per ticket in blocking order. Autopilot-stack only when the user names it.\n- An unfamiliar external API, library, or standard → the **research** skill, which saves a cited note in the repo. Questions about this codebase stay with **how** and **why**.\n- Module depth, seams, or where an interface belongs → the **codebase-design** skill for the shared vocabulary. Hunting refactor candidates across a codebase → the **improve-codebase-architecture** skill.\n- Handing work to another harness or directory on this machine → the **handoff** skill. For a person, or from a cloud session, post the handoff as a comment on the tracker issue instead. Resuming here later is Pause safely.}g;
-s{^(- Any prose surface → the \*\*unslop\*\* skill\..*\(use the anthropic-skills:skill-creator skill\)\.)$}{$1 What goes into an agent-facing doc, and where, follows the **writing-for-agents** skill. Grilling rounds, specs, tickets, and glossaries keep the templates and terms their own skills define.}g;
+s{^(- Any prose surface\b.*\(use the anthropic-skills:skill-creator skill\)\.)$}{$1 What goes into an agent-facing doc, and where, follows the **writing-for-agents** skill. Grilling rounds, specs, tickets, and glossaries keep the templates and terms their own skills define.}g;
 s{(If it won't reproduce directly, synthesize the trigger, tighten conditions, or instrument until it fires\.)}{$1 For a hard or flaky bug, build the feedback loop with the **diagnosing-bugs** skill (its loop and reproduce phases) before forming hypotheses.}g;
-s{^(- \*\*Feature\.\*\* New or changed behavior, built from a named data shape\. `playbooks/feature\.md`\.)$}{- **Deciding what to build.** No agreed spec or ticket yet, and scope, naming, or behavior still open. Grill the human, record the glossary and decisions, publish a spec and tickets. Runs before Feature. `playbooks/deciding.md`.\n$1}g;
+s{^(- \*\*Feature\.\*\* New or changed behavior, built from a named data shape\.)$}{- **Deciding what to build.** No agreed spec or ticket yet, and scope, naming, or behavior still open. Grill the human, record the glossary and decisions, publish a spec and tickets. Runs before Feature. File: `playbooks/deciding.md`.\n$1}g;
 
 # --- upstream re-reads pstack files from its monorepo (`git show origin/main:pstack/...`).
 # --- No user repo has a pstack/ path, so each read failed on its first command (measured:
@@ -154,10 +145,10 @@ s{`git show origin/main:pstack/skills/swarm/SKILL\.md`}{Load `pstack-cc:swarm` w
 s{`git show origin/main:pstack/skills/poteto-mode/playbooks/opening-a-pr\.md`}{Read `playbooks/opening-a-pr.md` from the `pstack-cc:poteto-mode` base directory}g;
 s{`git show origin/main:pstack/skills/<each other leaf skill the program uses>`}{Load `pstack-cc:<each other leaf skill the program uses>` with the Skill tool}g;
 s{"Re-read the execution playbook from trunk\.}{"Re-read the execution playbook from the `pstack-cc:poteto-mode` base directory.}g;
-s{run the swarm per `pstack/skills/swarm/SKILL\.md`\.}{run the swarm per the `pstack-cc:swarm` skill.}g;
+s{Run each full swarm per `pstack/skills/swarm/SKILL\.md`\.}{Run each full swarm per the `pstack-cc:swarm` skill.}g;
 s{Which PRs get `pstack/skills/how/SKILL\.md` and `pstack/skills/interrogate/SKILL\.md`\. The trail per `pstack/skills/show-me-your-work/SKILL\.md`\.}{Which PRs get the `pstack-cc:how` and `pstack-cc:interrogate` skills. The trail per the `pstack-cc:show-me-your-work` skill.}g;
-s{re-read this playbook from trunk with `git show origin/main:pstack/skills/poteto-mode/playbooks/autopilot-full\.md` and audit the operation against it\.}{re-read this playbook, `playbooks/autopilot-full.md` under the `pstack-cc:poteto-mode` base directory, and audit the operation against it. The Skill tool prints that directory when it loads the skill. Load that skill again if the path has left your context.}g;
-s{re-read this playbook from trunk with `git show origin/main:pstack/skills/poteto-mode/playbooks/autopilot-stack\.md` and audit the operation against it\.}{re-read this playbook, `playbooks/autopilot-stack.md` under the `pstack-cc:poteto-mode` base directory, and audit the operation against it. The Skill tool prints that directory when it loads the skill. Load that skill again if the path has left your context.}g;
+s{Each tick re-reads this playbook from trunk and}{Each tick re-reads this playbook (`playbooks/autopilot-full.md` in the `pstack-cc:poteto-mode` base directory, which the Skill tool prints when it loads that skill) and}g;
+s{Each tick re-reads both playbooks from trunk,}{Each tick re-reads both playbooks from the `pstack-cc:poteto-mode` base directory, which the Skill tool prints when it loads that skill,}g;
 # --- check-plan proves the re-read list exists by a marker string. Require the list's two
 # --- fixed entries. `pstack-cc:poteto-mode` alone also matches the tick prompt, so a plan
 # --- with the whole list deleted passed (Codex review on #8, reproduced).
@@ -165,8 +156,38 @@ s{const PROGRAM_MARKERS = \["git show origin/main:", }{const PROGRAM_MARKERS = [
 # --- code review runs on every PR, before it opens (user decision 2026-10-06). Upstream
 # --- runs interrogate on a lead's diff only for a contested design, but always when a
 # --- subagent opens the PR, so a lead's PR could reach the forge with no code review.
-s{Run `/no-comments` before review\.}{Run `/no-comments` and commit its fixes. Then review the PR's own diff (`git diff <base-branch>...HEAD`, where a stack child's base is its parent branch) with `interrogate`, on every PR, whether or not the design is contested. A run in which no reviewer delivered is not a review. Fix its `Act on` findings and commit the fixes before you open the PR. An owner whose playbook opens the PR early, such as an Autopilot owner, does this before its code-ready report instead.}g;
+s{over the diff before commit and `/no-comments` before review\.}{over the diff before commit. Run `/no-comments` and commit its fixes. Then review the PR's own diff (`git diff <base-branch>...HEAD`, where a stack child's base is its parent branch) with `interrogate`, on every PR, whether or not the design is contested. A run in which no reviewer delivered is not a review. Fix its `Act on` findings and commit the fixes before you open the PR. An owner whose playbook opens the PR early, such as an Autopilot owner, does this before its code-ready report instead.}g;
 s{A subagent that opens a PR runs `interrogate`, `/pstack-cc:unslop`, and `/no-comments`, and posts the URL\.}{A subagent that opens a PR follows **PRs** above, review included, and posts the URL.}g;
 s{^- Contested design → the \*\*interrogate\*\* skill \(multi-model adversarial\) before shipping\.$}{- Before opening a PR → the **interrogate** skill (multi-model adversarial) on the PR's own diff. Every PR gets it, whether or not the design is contested.};
 s{^7\. If the design is contested, `interrogate` before shipping\.\n}{} if $ARGV =~ m{/playbooks/feature\.md$};
 s{^8\. Run \*\*Opening a PR\*\*\.$}{7. Run **Opening a PR**.} if $ARGV =~ m{/playbooks/feature\.md$};
+# --- since d457567 reflect locates its transcript in the `agent-transcripts/` directory "the
+# --- system prompt names". Neither exists here; same layout as the transcript rules above.
+s{find this conversation's transcript in the `agent-transcripts/` directory the system prompt names\.}{find this conversation's transcript in `~/.claude/projects/<slug>/`, where `<slug>` is the workspace path with every character that is not a letter or digit turned into "-". This session's own file there is `\${CLAUDE_SESSION_ID}.jsonl`. Use only that directory.}g;
+# --- since d457567 the slug fallback names Cursor's own model families. Neither resolves in
+# --- the Agent tool, and no default here is a `grok-*` slug, so a refused entry falls back by `claude-*`.
+s{, and `grok-\*` with `cursor-grok-\*` and `composer-\*`\. A refused `composer-\*` entry runs on (?:Reviewer B's default|`[^`]+`)\.}{.}g;
+# --- poteto-help's references are prompts the user types. A typed command here takes the
+# --- plugin prefix; the bare form is not registered.
+s{(?<![\w:/.~-])/(architect|arena|bro|create-formal-verification-skill|how|in-your-own-words|interrogate|ketchup|maintain-formal-verification-skill|poteto-mode|recall|reflect|sharpen|show-me-your-work|swarm|tdd|teach|why)\b(?!-)}{/pstack-cc:$1}g if $ARGV =~ m{/poteto-help/references/};
+# --- check-plan.test.ts (since d457567) feeds check-plan a valid plan built on upstream's
+# --- `git show origin/main:` marker. The port's check-plan requires its own two markers instead.
+s{^\\`git show origin/main:\\` /loop 1h status message$}{Load \\`pstack-cc:swarm\\` with the Skill tool. Read \\`playbooks/opening-a-pr.md\\`. /loop 1h status message} if $ARGV =~ m{/check-plan\.test\.ts$};
+# --- poteto-agent (since d457567): the runner chat owns "every Task spawn".
+s{\bevery Task spawn\b}{every Agent spawn}g;
+# --- since d457567 poteto-mode tells the runner to pass its own path to every poteto-agent.
+# --- Here the agent preloads poteto-mode and loads every other skill through the Skill tool.
+s{^Bundled skills live at `\.\./<name>/SKILL\.md` from this file, so put this file's absolute path in every `poteto-agent` prompt\.$}{Load a bundled skill with the Skill tool as `pstack-cc:<name>`. `poteto-agent` preloads this skill, so its prompt needs no path to it.}g;
+# --- since d457567 poteto-mode tunes each spawn by editing the effort and -fast tokens of a
+# --- Cursor slug. Claude Code's aliases carry neither, so the step down is a smaller model.
+s{^\*\*Match the model to the job\.\*\* Before each spawn, start from the role's line or default and pick the reasoning level and speed the job needs\..*$}{**Match the model to the job.** Before each spawn, start from the role's line or default. Keep it for the hardest or subtlest work. For routine work, step down within the same vendor (`opus` to `sonnet` to `haiku`), so a diverse panel stays diverse. Verification is the exception and stays on the `swarm workers` model (`sonnet` by default). A role on `auto` or `inherit-parent` stays on the parent model. If the Agent tool rejects a model, use the role's line or default and say so.}g;
+s{Pick each subagent's reasoning level and fast or standard speed for the job,}{Pick each subagent's model for the job,}g;
+s{\bomit Task `model`}{omit the Agent tool's `model`}g;
+s{\ba `Agent`}{an `Agent`}g;
+# --- reflect keeps general-purpose; "readonly strips MCPs" was a Cursor fact.
+s{, and readonly strips MCPs\.}{.}g;
+# --- ketchup (since d457567) charts with Cursor's `/visualize`, which Claude Code lacks.
+s{a chart or diagram from `/visualize`}{a chart or diagram}g;
+s{a `/visualize` chart for numbers}{a chart for numbers}g;
+# --- the control skill is a set of tools here, not a file in upstream's monorepo.
+s{`git show origin/main:<control skill path>`}{Re-read the **Control skill** entry above for the surface this program drives}g;
