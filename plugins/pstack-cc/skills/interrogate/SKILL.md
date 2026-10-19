@@ -17,6 +17,8 @@ Identify what to review from context:
 
 Package the diff or file contents with any surrounding context files the reviewers need to understand the code.
 
+Also collect the repo's coding standards. Search the files tracked at the base you diff against (`git ls-tree -r --name-only <base>`), skipping vendored and generated trees, for every file that documents how the code should be written, such as `CONTRIBUTING.md`, `CODING_STANDARDS.md`, a style guide, or the coding sections of `AGENTS.md` or `CLAUDE.md`. If `CONTRIBUTING.md` or `CODING_STANDARDS.md` exists, it must be on the list. Read each file from the base you diff against (`git show <base>:<path>`), so a change cannot loosen the rules it is judged by. If the diff edits, renames, or deletes one of these files, say so. Package the passages that govern how code is written, each under a heading with its repo-relative path, as the repo standards, or "none found" if the repo has none.
+
 ## Step 2, Intent
 
 Before spawning reviewers, state the intent in one clear paragraph from the user's message, commit messages, the PR description if one exists, and the code. If you're unsure about the intent, ask the user before proceeding.
@@ -34,7 +36,7 @@ Each reviewer gets `subagent_type: "pstack-cc:read-only"` (no edit tools, no `Ag
 
 If the Agent tool rejects a configured entry, run that reviewer on its family's table default and say so. Families go by prefix: `claude-*`. With no family match, use Reviewer A's default. If it rejects a table default, spawn with the closest equivalent from the valid slugs in its error message (prefer the same family and reasoning tier), and open a separate PR to update the default table. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug or apply either fallback to it.
 
-Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's model for the job, per the Subagents section of the **poteto-mode** skill.
+Read `references/reviewer-prompt.md` and fill in the same template for every reviewer, cross-vendor seats included, with the stated intent, the diff or file contents, the repo standards from Step 1, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's model for the job, per the Subagents section of the **poteto-mode** skill.
 
 ## Step 4, Synthesize
 
