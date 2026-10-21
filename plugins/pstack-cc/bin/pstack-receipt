@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+
+import {
+  begin, describeProblem, finish, receiptState, recordVerdict, ReceiptRefused, REVIEW_STEPS,
+} from '../lib/receipts.mjs';
+
+const USAGE = 'usage: pstack-receipt begin <step> [--base <ref>] | finish <step> [evidence] '
+  + '| verdict <PASS|PASS+NOTES|FAIL> --pr <n> --by <who> --ran <what> | status [--rev <rev>] [--branch <name>] [--base <ref>] [--skip <step>]';
+const REPEATABLE = new Set(['seat', 'act-on', 'skip']);
+const refuse = (msg) => { throw new ReceiptRefused(msg); };
+
+function parse(argv, allowed) {
+  const pos = [];
+  const flags = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith('--')) { pos.push(a); continue; }
+    const name = a.slice(2);
+    if (!allowed.includes(name)) refuse(`unknown flag ${a}. ${USAGE}`);
+    const value = argv[++i];
+    if (value === undefined || value.startsWith('--')) refuse(`${a} needs a value. ${USAGE}`);
+    if (REPEATABLE.has(name)) (flags[name] ??= []).push(value);
+    else flags[name] = value;
+  }
+  return { pos, flags };
+}
+
+function parseSeat(s) {
+  const m = /^([^=]+)=(delivered|dropout:(.+))$/.exec(s);
+  if (!m) refuse(`--seat ${s} must read <model>=delivered or <model>=dropout:<reason>.`);
+  return m[2] === 'delivered' ? { model: m[1], delivered: true } : { model: m[1], delivered: false, reason: m[3] };
+}
+
+function evidenceFor(step, flags) {
+  if (step === 'no-comments') {
+    if (!flags.summary?.trim()) refuse('finish no-comments needs --summary "<one line of the report>".');
+    const d = flags.deletions;
+    if (d !== undefined && !/^\d+$/.test(d)) refuse(`--deletions ${d} is not a count.`);
+    return { step, summary: flags.summary.trim(), deletions: d === undefined ? null : Number(d) };
+  }
+  if (step === 'interrogate') {
+    if (!flags.seat?.length) refuse('finish interrogate needs one --seat <model>=delivered|dropout:<reason> per seat.');
+    return { step, seats: flags.seat.map(parseSeat), actOn: flags['act-on'] ?? [] };
+  }
+  return { step };
+}
+
+const short = (s) => s.slice(0, 12);
+
+function printStatus(st) {
+  const lines = [`branch ${st.branch ?? '(detached)'}  head ${short(st.head)}  tree ${short(st.tree)}  base ${st.base ?? '(none)'}`];
+  for (const { id } of REVIEW_STEPS) {
+    const r = st.receipts.filter((x) => x.kind === 'review' && x.step === id).at(-1);
+    lines.push(r
+      ? `${id.padEnd(12)} ${short(r.input)} -> ${short(r.output)}  ${r.at}${r.fixPaths.length ? `  act-on ${r.fixPaths.join(', ')}` : ''}`
+      : `${id.padEnd(12)} none`);
+  }
+  lines.push(st.chain.ok
+    ? 'chain        ok'
+    : `chain        broken: ${describeProblem(st.chain.problem)} Rerun in order: ${st.chain.rerun.join(', ')}.`);
+  const v = st.verdict;
+  lines.push(v.ok
+    ? `verdict      ${v.receipt.verdict} for PR #${v.receipt.pr} by ${v.receipt.by}`
+    : v.why === 'none' ? 'verdict      none'
+      : v.why === 'no-base' ? 'verdict      cannot compare: the base names no commit here'
+        : v.why === 'fail' ? `verdict      FAIL for PR #${v.receipt.pr} by ${v.receipt.by}`
+          : `verdict      stale: the PR #${v.receipt.pr} verdict covers another patch`);
+  return lines.join('\n');
+}
+
+function main(argv) {
+  const [verb, ...rest] = argv;
+  const cwd = process.cwd();
+  switch (verb) {
+    case 'begin': {
+      const { pos, flags } = parse(rest, ['base']);
+      if (pos.length !== 1) refuse(USAGE);
+      const b = begin(pos[0], { cwd, base: flags.base });
+      return `pstack-receipt: began ${b.step} on ${b.branch} at tree ${short(b.input)}`;
+    }
+    case 'finish': {
+      const { pos, flags } = parse(rest, ['summary', 'deletions', 'seat', 'act-on']);
+      if (pos.length !== 1) refuse(USAGE);
+      const r = finish(evidenceFor(pos[0], flags), { cwd });
+      return `pstack-receipt: ${r.step} receipt written, tree ${short(r.input)} -> ${short(r.output)}`
+        + (r.fixPaths.length ? `, act-on ${r.fixPaths.join(', ')}` : '');
+    }
+    case 'verdict': {
+      const { pos, flags } = parse(rest, ['pr', 'by', 'ran']);
+      if (pos.length !== 1) refuse(USAGE);
+      if (!/^\d+$/.test(flags.pr ?? '')) refuse('verdict needs --pr <number>.');
+      if (!flags.by?.trim()) refuse('verdict needs --by "<model> verifier", the agent that ran the change.');
+      if (!flags.ran?.trim()) refuse('verdict needs --ran "<what you drove>".');
+      const r = recordVerdict({ verdict: pos[0], pr: Number(flags.pr), by: flags.by.trim(), ran: flags.ran.trim() }, { cwd });
+      return `pstack-receipt: verdict ${r.verdict} for PR #${r.pr} written, patch ${short(r.patchId)}`;
+    }
+    case 'status': {
+      const { pos, flags } = parse(rest, ['rev', 'branch', 'base', 'skip']);
+      if (pos.length) refuse(USAGE);
+      for (const s of flags.skip ?? []) {
+        const step = REVIEW_STEPS.find((r) => r.id === s);
+        if (!step) refuse(`--skip ${s} names no review step.`);
+        if (step.critical) refuse(`${s} cannot be skipped.`);
+      }
+      const st = receiptState({ cwd, rev: flags.rev, branch: flags.branch, base: flags.base, skipped: flags.skip ?? [] });
+      if (!st.chain.ok) process.exitCode = 2;
+      return printStatus(st);
+    }
+    default:
+      return refuse(USAGE);
+  }
+}
+
+try {
+  process.stdout.write(`${main(process.argv.slice(2))}\n`);
+} catch (e) {
+  if (!(e instanceof ReceiptRefused)) throw e;
+  process.stderr.write(`pstack-receipt: ${e.message}\n`);
+  process.exitCode = 2;
+}

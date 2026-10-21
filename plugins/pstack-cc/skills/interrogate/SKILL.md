@@ -15,7 +15,7 @@ Identify what to review from context:
 - If on a feature branch, run `git diff main...HEAD` (or the appropriate base branch) for the full changeset.
 - If the user's message references recent work, gather the relevant files.
 
-Package the diff or file contents with any surrounding context files the reviewers need to understand the code.
+Package the diff or file contents with any surrounding context files the reviewers need to understand the code. When the scope is a branch diff, run `pstack-receipt begin interrogate` now. It records the tree the reviewers see, so edit nothing until Step 6.
 
 Also collect the repo's coding standards. Search the files tracked at the base you diff against (`git ls-tree -r --name-only <base>`), skipping vendored and generated trees, for every file that documents how the code should be written, such as `CONTRIBUTING.md`, `CODING_STANDARDS.md`, a style guide, or the coding sections of `AGENTS.md` or `CLAUDE.md`. If `CONTRIBUTING.md` or `CODING_STANDARDS.md` exists, it must be on the list. Read each file from the base you diff against (`git show <base>:<path>`), so a change cannot loosen the rules it is judged by. If the diff edits, renames, or deletes one of these files, say so. Package the passages that govern how code is written, each under a heading with its repo-relative path, as the repo standards, or "none found" if the repo has none.
 
@@ -50,6 +50,10 @@ You are the lead reviewer, a pragmatic senior engineer, not a neutral aggregator
 - **Consider**. Legitimate, but you're not sure they outweigh the cost of addressing them now. Worth the user's attention.
 - **Noted**. Technically valid but not actionable. Context-dependent, premature optimization, or low-impact at this stage.
 - **Dismissed**. Wrong, nitpicky, or missing context, with a brief reason.
+
+## Step 6, Receipt
+
+When you ran `begin`, the lead, never a reviewer, runs `pstack-receipt finish interrogate` right after the verdict and before fixing anything. Pass one `--seat <model>=delivered` or `--seat <model>=dropout:<reason>` per seat and one `--act-on <path>` for each file an `Act on` finding cites. It refuses a run in which no seat delivered, and a run during which the tree changed. After it, fixes may touch only the `--act-on` files. Any other edit needs the reviews again.
 
 ## Output Format
 

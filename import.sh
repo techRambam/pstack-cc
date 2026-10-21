@@ -176,4 +176,7 @@ bash "$ROOT/tests/rule-keys.sh" >/dev/null || die "rule-key tests failed (run te
 log "testing the budget hook and usage report"
 bash "$ROOT/tests/budget.sh" >/dev/null || die "budget tests failed"
 bash "$ROOT/tests/pstack-usage.sh" >/dev/null || die "pstack-usage tests failed"
+log "testing the playbook model and the receipts CLI"
+bash "$ROOT/tests/playbooks.sh" >/dev/null || die "playbook tests failed (run tests/playbooks.sh)"
+bash "$ROOT/tests/receipts.sh" >/dev/null || die "receipt tests failed (run tests/receipts.sh)"
 log "clean"
