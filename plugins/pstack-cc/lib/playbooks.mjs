@@ -1,14 +1,7 @@
-// The poteto-mode playbook model. The playbook files are the one source of truth for step order,
-// step text and gate tags. transform/rules.pl (and own/ for deciding.md) puts the [critical],
-// [commit] and [merge] tags on step lines. This module reads them. bin/pstack-playbook, the
-// pstack-cc tests and the playbook gate in ~/.claude all go through loadPlaybooks and matchPlan.
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { REVIEW_STEPS } from './receipts.mjs';
 
-/** Versions the exports of this module and lib/receipts.mjs together. The gate allows, and says
- *  so, when the number differs from the one it was written against. */
 export const CONTRACT = 1;
 
 /**
@@ -66,9 +59,6 @@ export function normalizeStepText(text) {
 
 const wordCount = (s) => (s ? s.split(' ').length : 0);
 
-/** Cumulative sentence prefixes of a raw step line, as written. A sentence ends at . ! or ?,
- *  optionally closed by emphasis, a backtick, a bracket or a quote, before whitespace and a
- *  capital, digit, quote, bracket or emphasis. "e.g. foo" stays one sentence. */
 function rawPrefixes(raw) {
   const out = [];
   const re = /[.!?](?:\*\*|__|`|\)|"|'|”|’)*(?=\s+[A-Z0-9"'(\[`*_“‘])/g;
@@ -149,8 +139,6 @@ export function loadPlaybooks(pluginRoot) {
     .map((f) => parsePlaybook(path.join(dir, f))).filter(Boolean);
 }
 
-/** A TodoWrite row cannot say skipped, so poteto-mode's convention puts `skip: <reason>` at the end
- *  of a done row. The returned row carries the status and reason the plan means. */
 function readRow(step) {
   const m = SKIP_SUFFIX_RE.exec(step.text);
   if (!m) return step;

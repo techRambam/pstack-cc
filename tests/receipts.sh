@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2016  # single-quoted backticks and $ are message text and JavaScript
-# bin/pstack-receipt in scratch git repos: the Opening a PR worked example, its five failure
-# variants, every refusal, and the Shipping verdict. A stub gh stands in for the forge.
+# shellcheck disable=SC2016
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN="$ROOT/plugins/pstack-cc"
@@ -22,7 +20,7 @@ EOF
 chmod +x "$T/bin/gh"
 export PATH="$T/bin:$PATH"
 
-expect() { # name, want rc, want text, dir, args...
+expect() {
   local name="$1" want_rc="$2" want="$3" dir="$4"; shift 4
   local out rc; out="$(cd "$dir" && node "$RC" "$@" 2>&1)"; rc=$?
   if [ "$rc" = "$want_rc" ] && [[ "$out" == *"$want"* ]]; then pass=$((pass+1)); printf '  ok    %s\n' "$name"
@@ -31,7 +29,7 @@ expect() { # name, want rc, want text, dir, args...
 quiet() { local out; out="$(cd "$W" && node "$RC" "$@" 2>&1)" || { echo "setup step failed: pstack-receipt $*"; echo "$out"; exit 2; }; }
 
 n=0
-repo() { # a main commit, then branch feat/x with uncommitted implementation work
+repo() {
   n=$((n+1)); W="$T/repo-$n"; mkdir -p "$W/src" "$W/tests"
   git -C "$W" init -q -b main
   for f in README.md src/x.ts src/y.ts src/z.ts tests/t.ts; do printf 'line one of %s\nline two\n' "$f" > "$W/$f"; done
@@ -78,7 +76,7 @@ expect "variant e: the pushed head does not, so it is a tail" 2 "edits after int
 
 repo; s2; s3; s4; s5; s6; s7
 expect "a missing interrogate reruns only interrogate when nothing moved" 2 "there is no interrogate receipt for this branch. Rerun in order: interrogate." "$W" status
-eq_js() { # name, want, js over receiptState
+eq_js() {
   local got; got="$(cd "$W" && node --input-type=module -e "import { receiptState } from '$PLUGIN/lib/receipts.mjs'; $2")"
   if [ "$got" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
   else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$1" "$3" "$got"; fi

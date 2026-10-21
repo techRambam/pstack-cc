@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2016  # the single-quoted $ and backticks are JavaScript and sed, not shell
-# The playbook model in lib/playbooks.mjs, through bin/pstack-playbook and the lib's exports.
-# The golden file holds every step's derived class. When a playbook change moves one on purpose,
-# regenerate it and read the diff:
-#   node plugins/pstack-cc/bin/pstack-playbook check --table > tests/playbooks.golden.tsv
+# shellcheck disable=SC2016
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN="$ROOT/plugins/pstack-cc"
@@ -12,11 +8,11 @@ pass=0; fail=0
 T="$(mktemp -d "${TMPDIR:-/tmp}/pstack-playbooks.XXXXXX")" && [ -d "$T" ] || { echo "mktemp failed"; exit 2; }
 trap 'rm -rf "$T"' EXIT
 
-eq() { # name, got, want
+eq() {
   if [ "$2" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
   else fail=$((fail+1)); printf '  FAIL  %s\n        want %q\n        got  %q\n' "$1" "$3" "$2"; fi
 }
-has() { # name, haystack, needle
+has() {
   case "$2" in *"$3"*) pass=$((pass+1)); printf '  ok    %s\n' "$1" ;;
   *) fail=$((fail+1)); printf '  FAIL  %s (no %q in:)\n%s\n' "$1" "$3" "$2" ;; esac
 }
@@ -79,7 +75,7 @@ eq "reasonProblem accepts a real reason" "$(js "console.log(m.reasonProblem('doc
 has "reasonProblem refuses a stock phrase" "$(js "console.log(m.reasonProblem('n/a'))")" "stock phrase"
 has "reasonProblem refuses a thin reason" "$(js "console.log(m.reasonProblem('not useful'))")" "under three words"
 
-mutant() { # name, sed expression applied to one playbook file, want text
+mutant() {
   local R="$T/mutant-$pass-$fail"
   mkdir -p "$R/skills/poteto-mode"
   cp -R "$PLUGIN/bin" "$PLUGIN/lib" "$R/"

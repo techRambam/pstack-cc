@@ -1,10 +1,4 @@
 #!/usr/bin/env node
-// Prints poteto-mode playbooks as plans, and checks the gate tags they carry.
-//
-//   pstack-playbook plan <name> [--todowrite]   plan JSON for the plan tool, or TodoWrite input
-//   pstack-playbook check [--table]             invariants; --table prints every step's derived class
-//
-// Exit 0 on success. Exit 2 with the fix on a refusal or a broken invariant.
 
 import fs from 'node:fs';
 import path from 'node:path';

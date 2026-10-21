@@ -1,14 +1,4 @@
 #!/usr/bin/env node
-// Writes and reads the review and verdict receipts in lib/receipts.mjs.
-//
-//   pstack-receipt begin <unslop|no-comments|interrogate> [--base <ref>]
-//   pstack-receipt finish unslop
-//   pstack-receipt finish no-comments --summary <text> [--deletions <n>]
-//   pstack-receipt finish interrogate --seat <model>=delivered|dropout:<reason> ... [--act-on <path> ...]
-//   pstack-receipt verdict <PASS|PASS+NOTES|FAIL> --pr <n> --by <who> --ran <what>
-//   pstack-receipt status [--rev <rev>] [--base <ref>] [--skip unslop|no-comments ...]
-//
-// Exit 0 on success. Exit 2 with the fix on a refusal, and from status when the chain is broken.
 
 import {
   begin, describeProblem, finish, receiptState, recordVerdict, ReceiptRefused, REVIEW_STEPS,

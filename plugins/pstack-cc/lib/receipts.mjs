@@ -1,10 +1,3 @@
-// Review receipts for Opening a PR and verdict receipts for Shipping.
-//
-// A receipt is keyed to a git tree, not a commit: a commit, an amend or a rebase that leaves the
-// content alone leaves the tree alone. Each review records the tree it started from (begin) and the
-// tree it left (finish). The three reviews form a chain, and receiptState is the one reader that
-// judges it. bin/pstack-receipt status and the playbook gate in ~/.claude both call receiptState.
-
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -14,7 +7,6 @@ import path from 'node:path';
 /** @typedef {'unslop' | 'no-comments' | 'interrogate'} ReviewStepId */
 /** @typedef {{ id: ReviewStepId, skill: string, planText: string, critical: boolean }} ReviewStep */
 
-/** In the order opening-a-pr.md runs them. `pstack-playbook check` fails when that order changes. */
 /** @type {readonly ReviewStep[]} */
 export const REVIEW_STEPS = Object.freeze([
   { id: 'unslop', skill: '/pstack-cc:unslop', planText: '/pstack-cc:unslop over the diff', critical: false },
@@ -31,7 +23,7 @@ export const VERDICTS = Object.freeze(['PASS', 'PASS+NOTES', 'FAIL']);
  *   | { step: 'unslop' }
  *   | { step: 'no-comments', summary: string, deletions: number | null }
  *   | { step: 'interrogate', seats: readonly Seat[], actOn: readonly string[] }
- * )} Evidence  what the CLI collects for `finish`
+ * )} Evidence
  * @typedef {{ v: 1, branch: string, at: string, worktree: string, head: string }} Common
  * @typedef {Common & { kind: 'review', step: ReviewStepId, input: Tree, output: Tree, fixPaths: string[],
  *   evidence: { files: string[] } | { summary: string, deletions: number | null } | { seats: Seat[], actOn: string[] } }} ReviewReceipt
@@ -84,8 +76,6 @@ function repoAt(cwd) {
   };
 }
 
-/** The tree of what a reviewer sees now: tracked changes plus untracked files .gitignore does not
- *  hide, built in a throwaway index so the real index and files stay untouched. */
 function worktreeTree(repo) {
   const tmp = path.join(os.tmpdir(), `pstack-index-${process.pid}-${crypto.randomBytes(6).toString('hex')}`);
   try {
@@ -107,8 +97,6 @@ function changedPaths(repo, a, b) {
     .split('\0').filter(Boolean);
 }
 
-/** An explicit base wins, then the base `begin --base` stored for the branch, then origin/HEAD,
- *  then main. A name resolves to its origin/ ref when one exists, so writer and reader agree. */
 function resolveBase(repo, branch, explicit) {
   const name = explicit
     ?? (branch && gitMaybe(repo.top, ['config', '--get', `branch.${branch}.pstackBase`]))
@@ -120,8 +108,7 @@ function resolveBase(repo, branch, explicit) {
   return null;
 }
 
-/** `git patch-id --verbatim` of merge-base(base, rev)..rev. --stable would ignore whitespace-only
- *  changes, and a verdict must not cover a patch its verifier never ran. */
+/** `git patch-id --stable` ignores whitespace-only changes. */
 function patchIdOf(repo, baseRef, rev) {
   const mb = gitLine(repo.top, ['merge-base', baseRef, rev]);
   const diff = git(repo.top, ['diff', '--binary', mb, rev]);
@@ -144,7 +131,6 @@ function writeAtomic(file, content) {
   fs.renameSync(tmp, file);
 }
 
-/** The name hashes the content without `at`, so the same receipt written twice is one file. */
 function writeReceipt(repo, r) {
   const { at, ...rest } = r;
   const name = `${r.kind === 'verdict' ? 'verdict' : r.step}.${sha1(JSON.stringify(rest)).slice(0, 12)}.json`;
@@ -158,7 +144,7 @@ const isReceipt = (r) => r && r.v === 1 && typeof r.at === 'string'
     && Array.isArray(r.fixPaths))
     || (r.kind === 'verdict' && VERDICTS.includes(r.verdict) && typeof r.patchId === 'string'));
 
-/** @returns {Receipt[]} oldest first */
+/** @returns {Receipt[]} */
 function readLedger(repo, branch) {
   const dir = branchDir(repo, branch);
   let names;
@@ -168,7 +154,7 @@ function readLedger(repo, branch) {
     try {
       const r = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
       if (isReceipt(r)) out.push(r);
-    } catch { /* a hand-made file that does not parse proves nothing */ }
+    } catch {}
   }
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 }
@@ -305,12 +291,7 @@ export function recordVerdict({ verdict, pr, by, ran }, { cwd }) {
 }
 
 
-/**
- * The chain: unslop, then no-comments, then interrogate, minus plan-skipped steps (interrogate
- * never drops). Latest receipt per step, `at` not decreasing, previous.output == next.input, and
- * changedPaths(last.output, tree) within last.fixPaths.
- * @returns {ChainState}
- */
+/** @returns {ChainState} */
 function judgeChain(repo, receipts, tree, skipped) {
   const order = REVIEW_STEPS.filter((s) => s.critical || !skipped.has(s.id)).map((s) => s.id);
   const reviews = receipts.filter((r) => r.kind === 'review');
@@ -337,7 +318,6 @@ function judgeChain(repo, receipts, tree, skipped) {
     if (!paths.length) return { ok: true };
     problem = { kind: 'tail', after: last.step, paths, allowed: last.fixPaths };
   }
-  // Rerun from the end of the longest linked prefix whose output still reaches the current tree.
   let from = 0;
   for (let p = Math.min(linked, order.length - 1); p > 0; p--) {
     if (!tailOf(latestOf.get(order[p - 1])).length) { from = p; break; }
@@ -381,8 +361,7 @@ export function receiptState({ cwd, rev, base, branch, skipped = [] }) {
   };
 }
 
-/** One sentence for a chain problem, shared by the CLI and the gate's denials.
- * @param {ChainProblem} p */
+/** @param {ChainProblem} p */
 export function describeProblem(p) {
   switch (p.kind) {
     case 'no-branch': return 'HEAD is detached, so there is no branch to read receipts for.';
