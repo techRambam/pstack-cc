@@ -172,14 +172,20 @@ const isReceipt = (r) => r && r.v === 1 && typeof r.at === 'string'
     && Array.isArray(r.fixPaths))
     || (r.kind === 'verdict' && VERDICTS.includes(r.verdict) && typeof r.patchId === 'string'));
 
-/** @returns {Receipt | null} null for a file that is unreadable, not JSON, or not a receipt */
+/**
+ * Receipts are written atomically, so a file that does not parse was damaged after the fact.
+ * Dropping it would let an older receipt decide, such as a PASS under a corrupted FAIL.
+ * @returns {Receipt}
+ */
 function parseReceiptFile(file) {
+  let r;
   try {
-    const r = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return isReceipt(r) ? r : null;
-  } catch {
-    return null;
+    r = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (e) {
+    refuse(`the receipt file ${file} does not parse (${e.message}). Delete it, then rerun the step that wrote it.`);
   }
+  if (!isReceipt(r)) refuse(`the receipt file ${file} parses but is not a receipt. Delete it, then rerun the step that wrote it.`);
+  return r;
 }
 
 /** @returns {Receipt[]} */
@@ -188,7 +194,7 @@ function readLedger(repo, branch) {
   let names;
   try { names = fs.readdirSync(dir); } catch { return []; }
   const out = names.filter((n) => n.endsWith('.json')).sort()
-    .map((name) => parseReceiptFile(path.join(dir, name))).filter((r) => r !== null);
+    .map((name) => parseReceiptFile(path.join(dir, name)));
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 }
 

@@ -155,5 +155,15 @@ git -C "$W" checkout -q main && echo unrelated > "$W/unrelated.txt" && git -C "$
 git -C "$W" checkout -q feat/x && git -C "$W" rebase -q main
 expect "a rebase that keeps the patch keeps the verdict" 2 "verdict      PASS for PR #12 by opus verifier" "$W" status
 
+GH_PR_JSON="$(pr_json "$NEW_OID")"
+expect "a FAIL to corrupt records" 0 "verdict FAIL for PR #12 written" "$T/verify" verdict FAIL --pr 12 --by "haiku verifier" --ran "drove it once more"
+LEDGER="$W/.git/pstack-receipts/feat%2Fx"
+NEWEST="$(for f in "$LEDGER"/verdict.*.json; do jq -r --arg f "$f" '"\(.at) \($f)"' "$f"; done | sort | tail -1 | cut -d' ' -f2)"
+printf '{"v":1,"kind":"verdict"' > "$NEWEST"
+expect "a truncated receipt fails the read and names its file" 2 "$(basename "$NEWEST") does not parse" "$W" status
+printf '{"v":1,"kind":"note"}\n' > "$NEWEST"
+expect "a file that parses but is not a receipt fails the read too" 2 "$(basename "$NEWEST") parses but is not a receipt" "$W" status
+rm "$NEWEST"
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
