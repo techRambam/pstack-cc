@@ -1,0 +1,140 @@
+playbook	writes	step	tags	boundary	substeps	head
+authoring-a-skill	true	1	commit	commit	0	Use the skill-creator skill (use the anthropic-skills:skill-creator skill).
+authoring-a-skill	true	2			0	Validate the skill: frontmatter has name and description, referenced files exist, cross-skill links resolve.
+authoring-a-skill	true	3			0	Test cases if structural. Skip if subjective.
+authoring-a-skill	true	4		push,merge	0	Run Opening a PR.
+autonomous-run	true	1			0	State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero).
+autonomous-run	true	2			0	Pick the wake mechanism using Claude Code's /loop skill (a built-in, not a pstack skill).
+autonomous-run	true	3	commit	commit	0	Each iteration makes the smallest change the evidence justifies, verifies it against the predicate, commits if it advanced, discards changes that didn't help.
+autonomous-run	true	4			0	Mid-run discoveries are yours. Address broken skills, related bugs, flaky verifiers, review noise, tooling failures, orphaned follow-ups, and fixable drift yourself via poteto-mode.
+autonomous-run	true	5			0	Checkpoint every iteration via the show-me-your-work skill, a row for what changed and whether the predicate moved.
+autonomous-run	true	6		merge	0	Stop when the predicate is met.
+autopilot-full	true	1			0	The operator's gates come first.
+autopilot-full	true	2	commit	commit	0	Spawn one owner per PR, and keep its work where a replacement can find it.
+autopilot-full	true	3			0	Run owners in parallel off trunk, never stacked, so each PR lands on its own.
+autopilot-full	true	4	critical		0	Swarm-verify once. A full swarm runs once, at the code-ready head.
+autopilot-full	true	5			0	The owner merges only what you verified, tested on the trunk it lands on.
+autopilot-full	true	6			0	Run the root layer. Anything that loosens a gate, such as a raised budget or an allowlist entry, needs a verifier's proof and then your fresh countersign, because the owner is the one who wants green.
+autopilot-full	true	7		merge	0	Stand down at once on the operator's stop.
+autopilot-stack	true	1	commit	commit	0	Run Autopilot-full's owners, minus the landing.
+autopilot-stack	true	2			0	Give the topology one writer.
+autopilot-stack	true	3			0	Absorb drift at the root.
+autopilot-stack	true	4		merge	0	Deliver the chain, then keep your hands off it.
+babysit	true	1			0	Declare the mode and resolve the forge before any poll.
+babysit	true	2			0	Work the merge frontier and nothing above it.
+babysit	true	3			0	One babysitter per stack. Before starting, check nothing else is already on it.
+babysit	true	4			0	Never mutate stack topology. No base retarget, rebase, stack-wide submit, or force-push from inside a babysit.
+babysit	true	5	commit	commit	0	Order is conflicts, then review threads, then CI.
+babysit	true	6			0	Trust the active forge's verdict, not a green check list.
+babysit	true	7			0	Classify CI before any retrigger.
+babysit	true	8			0	Bugbot is triaged skeptically, always.
+babysit	true	9		merge	0	Stop at the human's line.
+bug-fix	true	1	critical		0	Reproduce it yourself on the matching surface via the control skill (Non-negotiables), even when a debug or instrumentation protocol says to ask the user to reproduce.
+bug-fix	true	2			0	Binary-search the cause. Form the candidate hypotheses, then rule them out until one survives.
+bug-fix	true	3	commit	commit	0	Plan the fix. If it crosses a function boundary, architect first.
+bug-fix	true	4	critical		0	Verify on the same surface.
+bug-fix	true	5			0	Stage the commits so the failing repro lands before the fix in git history.
+bug-fix	true	6		push,merge	0	Run Opening a PR.
+deciding	true	1			0	If the repo has no docs/agents/issue-tracker.md, run the setup-matt-pocock-skills skill first, so the spec and tickets land in the tracker.
+deciding	true	2			0	Work bigger than one session goes to the wayfinder skill instead.
+deciding	true	3	commit	commit	0	Run the grill-with-docs skill. It grills over the design tree, one round at a time, and records resolved terms and hard-to-reverse decisions with the domain-modeling skill in GLOSSARY.md and ADRs.
+deciding	true	4			0	Run the to-spec skill. Agree the seams under test in its step 2, and keep them in the spec's Testing Decisions.
+deciding	true	5			0	Run the to-tickets skill. Each ticket carries its seams under test and its acceptance criteria, and the user approves the breakdown.
+deciding	true	6		merge	0	Stop. Build only when the user asks.
+eval	false	1			0	Frame. State what variant is under test and what behavior counts as success.
+eval	false	2			0	Set up sanitized environments. Per-candidate working dir with the variant in place.
+eval	false	3			0	Author one organic prompt. What a user would type.
+eval	false	4			0	Spawn N parallel candidates on different models per the arena skill's Phase B.
+eval	false	5			0	Spawn one blinded judge on a different model family per the arena skill's Phase C.
+eval	false	6			0	Verify the chain from transcripts, not self-report.
+eval	false	7		commit,merge	0	Read every candidate output yourself end to end.
+feature	true	1			0	how over the affected subsystem.
+feature	true	2			0	architect for parallel design exploration.
+feature	true	3			4	Write the throughput checkpoint as four todo items.
+feature	true	4	critical,commit	commit	0	Delegate code-writing to a subagent using your configured feature model (default sonnet) with a specific scope (file paths, named data shape and its organizing structure per principle-model-the-domain, a state machine over scattered booleans, a table/registry over branching, a typed model over repeated shape assumptions, chosen before the delegate writes logic, and success criteria).
+feature	true	5	critical		0	Verify on the matching surface.
+feature	true	6			0	Rebase into small, ordered commits.
+feature	true	7		push,merge	0	Run Opening a PR.
+hillclimb	true	1			0	Ground the workload and architecture before choosing the metric.
+hillclimb	true	2			0	Build the measurement harness, prove its sensitivity, then freeze it (the build-the-lever principle skill).
+hillclimb	true	3			0	Open the decision log via the show-me-your-work skill.
+hillclimb	true	4			0	Ground each hypothesis in the architecture model from step 1, so it names a specific mechanism ("defer X off the boot path because it blocks first paint"), not "try memoizing something".
+hillclimb	true	5	commit	commit	4	Loop, one hypothesis per iteration:
+hillclimb	true	6			0	Push past the first plateau.
+hillclimb	true	7			0	Stop when the predicate is met, or when the remaining ideas are marginal and not worth their cost.
+hillclimb	true	8		push,merge	0	Run Opening a PR with the accepted commits stacked in the order they landed.
+investigation	false	1			0	Route through the how skill.
+investigation	false	2			0	Throughput checkpoint stays one line: throughput checkpoint: n/a, read-only investigation.
+investigation	false	3			0	Produce the how-shaped output (Overview / Key Concepts / How It Works / Where Things Live / Gotchas), or a recommendation with a tradeoffs table if the request is a decision between alternatives.
+investigation	false	4		commit,merge	0	Apply the unslop skill to the reply.
+multi-phase-plan	false	1			0	When the change is one or two files with an obvious approach, skip the plan.
+multi-phase-plan	false	2			0	Settle open questions by prototype before you write.
+multi-phase-plan	false	3			0	Explore in subagents with subagent_type: "pstack-cc:poteto-agent" and an explicit model per the Subagents section (the guard-the-context-window principle skill).
+multi-phase-plan	false	4			0	Copy the skeleton below into the plan file and fill every placeholder.
+multi-phase-plan	false	5			0	Write under /technical-writing in full, then /unslop.
+multi-phase-plan	false	6			0	Run node scripts/check-plan.mjs <plan.md> and fix every line it prints (the encode-lessons-in-structure principle skill).
+multi-phase-plan	false	7		commit,merge	0	Hand back. Post the plan path and the script's output, then stop.
+orchestrate	true	1			0	Frame. State the done predicate as something countable ("all 126 units merged, each ledger-verified unit-test-verified or better").
+orchestrate	true	2			0	Install the runtime. Run orch init.
+orchestrate	true	3	commit	commit	0	Pilot. Push one unit through the whole path: brief, worker, verification, stack entry, ledger row, merge.
+orchestrate	true	4			0	Scale. Spawn a rolling window of workers up to the in-flight cap, refilling as children finish.
+orchestrate	true	5			0	Drain. Run the queue discipline below at every drain point.
+orchestrate	true	6			0	Land. Landing is continuous, never a terminal phase.
+orchestrate	true	7		merge	0	Close. Drain the final inbox, reconcile every spawned agent to a terminal row (done, abandoned, zombie-reconciled), confirm the predicate on the real artifact, confirm every landed PR has a verdict for its current head SHA, audit the trail per show-me-your-work including its cross-model review, encode recurring corrections into preferences.md or the brief template.
+pause-safely	true	1			0	Stop at a safe boundary.
+pause-safely	true	2			0	Take no irreversible action to pause.
+pause-safely	true	3	commit	commit	0	Make the work durable. Commit uncommitted edits as one clear wip: commit on the current branch so nothing is lost.
+pause-safely	true	4		merge	0	Write the resume note off-context.
+perf-issue	true	1			0	Capture a baseline trace via the matching control skill.
+perf-issue	true	2			0	how to ground hypotheses. Don't claim a perf ceiling without running it first.
+perf-issue	true	3	commit	commit	0	Plan the fix from the trace.
+perf-issue	true	4	critical		0	Parse and compare the artifacts (JSON to sqlite, diff).
+perf-issue	true	5			0	Cite the measurement in the PR.
+perf-issue	true	6		push,merge	0	Run Opening a PR.
+prototype	true	1			0	Scope the decision the prototype exists to make: which layout, which interaction, which density, or for an empirical fork which behavior, timing, or approach.
+prototype	true	2			0	Gather references when the design space is open.
+prototype	true	3	commit	commit	0	Build throwaway in an isolated scratch dir, separate from production source.
+prototype	true	4			0	When comparing alternatives, build them behind one switcher (buttons or a keypress), each variant labeled.
+prototype	true	5	critical		0	Verify on the matching surface.
+prototype	true	6		merge	0	Present alternatives, tradeoffs, and a recommendation.
+refactoring	true	1			0	Pin the behavior contract first.
+refactoring	true	2			0	Name the structure the code is missing per principle-model-the-domain.
+refactoring	true	3			0	Name the target shape. State what the module layout, types, and call graph should be if built today (principle-foundational-thinking, principle-redesign-from-first-principles).
+refactoring	true	4			0	Subtract before you add. Delete dead code, collapse one-caller wrappers, drop redundant validators, and remove orphan references before introducing the new shape (principle-subtract-before-you-add).
+refactoring	true	5	commit	commit	0	Move in small behavior-preserving steps, each keeping the pin green.
+refactoring	true	6	critical		0	Prove behavior is unchanged on the real artifact, not "it compiles" (principle-prove-it-works).
+refactoring	true	7			0	Confirm the change is worth keeping.
+refactoring	true	8		push,merge	0	Rebase into small ordered commits.
+runtime-forensics	false	1			0	Capture the live signal on the matching surface via the control skill: a CPU profile for a spinning process, a heap snapshot for a leak, a CDP trace for a visual glitch.
+runtime-forensics	false	2			0	Reduce the artifact to the smoking gun: the function on the hot path, the retainer chain from the leaked object to a GC root, the loop firing without input.
+runtime-forensics	false	3			0	Prove the mechanism before believing it.
+runtime-forensics	false	4			0	Map the finding back to source: file, symbol, the line that allocates or schedules.
+runtime-forensics	false	5		commit,merge	0	Throughput checkpoint stays one line: throughput checkpoint: n/a, read-only forensics.
+session-pickup	false	1			0	Locate the prior trail. A local transcript under the active workspace's transcript directory, ~/.claude/projects/<slug>/ (<slug> is the workspace path with every character that is not a letter or digit turned into "-".
+session-pickup	false	2			0	Reconstruct operational state. The branch and worktree, what already landed (git log, git diff against the base), the open todos, the decisions made.
+session-pickup	false	3			0	Diff done vs pending. Compare what shipped against what was planned, name the resume point, do not re-run the prior repro or redo completed work.
+session-pickup	false	4			0	Route the remaining work to the matching playbook and pick the verdict: continue the execution, ship a finished recommendation, ratify or override a prior conclusion, or postmortem a failed run.
+session-pickup	false	5	critical	commit,merge	0	Verify the inherited claims against the original goal on the real artifact (the principle-prove-it-works skill).
+shipping	false	1	critical		0	Resolve the forge, then verify each PR independently before it lands.
+shipping	false	2			0	Land only the contiguous verified run rooted at the bottom.
+shipping	false	3			0	Re-check that the verdicts still describe the code.
+shipping	false	4	merge	merge	0	Land bottom-up, one PR at a time.
+shipping	false	5			0	Leave the stack alone while it lands.
+shipping	false	6		commit	0	Stop at the ceiling. Extending the run takes new verdicts, so it is a new pass through step 1.
+trace-forensics	false	1			0	Identify the format and load it with the right tool.
+trace-forensics	false	2			0	Transform the raw artifact into a form you can query.
+trace-forensics	false	3			0	Narrow to the cause. Query for the frames that hold the most time and walk the call tree to the hot path.
+trace-forensics	false	4			0	Attribute to source. Map the hot frame to file, symbol, and line via the artifact's own symbols.
+trace-forensics	false	5			0	If you have a paired capture, diff the before and after artifacts to confirm.
+trace-forensics	false	6		commit,merge	0	Hand back a cited diagnosis, no fix unless asked.
+visual-parity	true	1			0	Establish the baseline first, before any migration: a visual regression harness that screenshots the current component across its states, plus the target when matching two implementations.
+visual-parity	true	2			0	Anti-shortcut clauses, stated and held: no harness modifications, no baseline tampering, no component restructuring to make a diff pass.
+visual-parity	true	3	commit	commit	0	Migrate one component at a time.
+visual-parity	true	4	critical		0	Verify each component against its baseline via image diff on the matching surface via the control skill.
+visual-parity	true	5		push,merge	0	Run Opening a PR per component or per safe batch.
+worktree-cleanup	false	1			0	Snapshot and audit. Record df -h /, then run scripts/worktree-audit.sh [-b <pr-base-ref>] [repo-path] (principle-build-the-lever).
+worktree-cleanup	false	2			0	The bucket is advice, not permission.
+worktree-cleanup	false	3			0	Verify usage before deleting. For every verify-recent-chat row, or anything you doubt, fan subagents out to read the transcripts and report whether the chat is pinned or ongoing and which worktrees it touches (principle-guard-the-context-window, transcripts are bulk).
+worktree-cleanup	false	4			0	Pause on irreversible loss. wip:N is N tracked uncommitted edits.
+worktree-cleanup	false	5			0	Prune the confirmed set. Per path, git worktree remove --force <path>.
+worktree-cleanup	false	6		commit,merge	0	Simulators and other reclaimers. Simulators are usually the next-biggest win.
