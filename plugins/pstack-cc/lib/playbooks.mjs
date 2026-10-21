@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { REVIEW_STEPS } from './receipts.mjs';
 
-/** Bumped when an export of playbooks.mjs or receipts.mjs changes shape. The playbook gate in ~/.claude refuses to run on a mismatch. */
+/** Bumped when an export of this file changes shape. receipts.mjs carries its own. The playbook gate in
+ *  ~/.claude compares both with the numbers it was written for and, on a mismatch, allows the call and
+ *  says the gate is off. */
 export const EXPORTS_VERSION = 1;
 
 /**
@@ -25,9 +27,9 @@ export const EXPORTS_VERSION = 1;
  * @property {string} title    the `### ` heading
  * @property {string} file     absolute path
  * @property {readonly PlaybookStep[]} steps
- * @property {number} commitAt        index: the [commit] step, else pushAt, else the last step
+ * @property {number} commitAt        index of the [commit] step, else pushAt, else the last step
  * @property {number | null} pushAt   index of the step that opens a PR
- * @property {number} mergeAt         index: the [merge] step, else pushAt, else the last step
+ * @property {number} mergeAt         index of the [merge] step, else pushAt, else the last step
  * @property {boolean} writes         has a [commit] tag or opens a PR
  *
  * @typedef {(
@@ -47,8 +49,8 @@ const MIN_WORDS = 5;
 const SKIP_SUFFIX_RE = /\s*[-–—(\[,;]*\s*\bskip(?:ped)?:\s*(.*?)\s*[)\]]?\s*$/i;
 
 /**
- * Words stay exact. Formatting does not: gate tags, `**`, `__`, backticks, curly quotes and runs
- * of whitespace go. Applied to playbook text and plan text alike.
+ * Words stay exact. Formatting goes, meaning gate tags, `**`, `__`, backticks, curly quotes and runs
+ * of whitespace. Applied to playbook text and plan text alike.
  * @param {string} text
  */
 export function normalizeStepText(text) {
@@ -211,8 +213,8 @@ function reviewSkipsOf(pb, plan, at) {
   return skips;
 }
 
-/** Why a skip reason does not count, or null when it does: three words or more that say why,
- *  not a stock phrase. The gate holds every skipped plan row to this rule. */
+/** Why a skip reason does not count, or null when it does. A reason counts when it is three words
+ *  or more and not a stock phrase. The gate holds every skipped plan row to this rule. */
 export function reasonProblem(reason) {
   const r = (reason ?? '').trim();
   if (!r) return 'a skipped step needs a reason';

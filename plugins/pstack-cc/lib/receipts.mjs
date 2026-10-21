@@ -4,15 +4,39 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+/** Bumped when an export of this file changes shape. The playbook gate in ~/.claude compares it
+ *  with the number it was written for and, on a mismatch, allows the call and says the gate is off. */
+export const EXPORTS_VERSION = 1;
+
 /** @typedef {'unslop' | 'no-comments' | 'interrogate'} ReviewStepId */
-/** @typedef {{ id: ReviewStepId, skill: string, planText: string, critical: boolean }} ReviewStep */
+/**
+ * @typedef {object} ReviewStep
+ * @property {ReviewStepId} id
+ * @property {string} skill        how the skill is named in opening-a-pr.md and in messages
+ * @property {string} planText     the plan sub-step text `pstack-playbook plan` prints
+ * @property {boolean} critical    counts only as done, never as skipped
+ * @property {string} finish       the finish command, with placeholders for its evidence
+ * @property {string} finishWhen   when in the review the finish command runs
+ */
 
 /** @type {readonly ReviewStep[]} */
 export const REVIEW_STEPS = Object.freeze([
-  { id: 'unslop', skill: '/pstack-cc:unslop', planText: '/pstack-cc:unslop over the diff', critical: false },
-  { id: 'no-comments', skill: '/no-comments', planText: '/no-comments', critical: false },
-  { id: 'interrogate', skill: 'interrogate', planText: 'interrogate on the PR diff', critical: true },
-]);
+  {
+    id: 'unslop', skill: '/pstack-cc:unslop', planText: '/pstack-cc:unslop over the diff', critical: false,
+    finish: 'pstack-receipt finish unslop', finishWhen: 'after its fixes are committed',
+  },
+  {
+    id: 'no-comments', skill: '/no-comments', planText: '/no-comments', critical: false,
+    finish: 'pstack-receipt finish no-comments --summary "<one line of the report>" --deletions <n>',
+    finishWhen: 'after its fixes are committed',
+  },
+  {
+    id: 'interrogate', skill: 'interrogate', planText: 'interrogate on the PR diff', critical: true,
+    finish: 'pstack-receipt finish interrogate --seat <model>=delivered --act-on <path>',
+    finishWhen: 'right after its verdict and before any fix, with one `--seat` per panel seat and one '
+      + '`--act-on` per file an Act on finding cites. After that, fixes may touch only those files',
+  },
+].map((s) => Object.freeze(s)));
 const REVIEW_IDS = new Set(REVIEW_STEPS.map((s) => s.id));
 export const VERDICTS = Object.freeze(['PASS', 'PASS+NOTES', 'FAIL']);
 
@@ -108,7 +132,7 @@ function resolveBase(repo, branch, explicit) {
   return null;
 }
 
-/** `git patch-id --stable` ignores whitespace-only changes. */
+/** `--verbatim`, because `--stable` ignores whitespace-only changes and would keep a verdict across one. */
 function patchIdOf(repo, baseRef, rev) {
   const mb = gitLine(repo.top, ['merge-base', baseRef, rev]);
   const diff = git(repo.top, ['diff', '--binary', mb, rev]);
