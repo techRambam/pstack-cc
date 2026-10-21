@@ -131,9 +131,13 @@ function writeAtomic(file, content) {
   fs.renameSync(tmp, file);
 }
 
+/** A repeated review collapses into one file. A repeated verdict does not, because the newest
+ *  verdict decides, so PASS, FAIL, PASS must leave three files. */
 function writeReceipt(repo, r) {
   const { at, ...rest } = r;
-  const name = `${r.kind === 'verdict' ? 'verdict' : r.step}.${sha1(JSON.stringify(rest)).slice(0, 12)}.json`;
+  const name = r.kind === 'verdict'
+    ? `verdict.${sha1(JSON.stringify(r)).slice(0, 12)}.json`
+    : `${r.step}.${sha1(JSON.stringify(rest)).slice(0, 12)}.json`;
   const file = path.join(branchDir(repo, r.branch), name);
   if (!fs.existsSync(file)) writeAtomic(file, `${JSON.stringify(r, null, 1)}\n`);
   return file;

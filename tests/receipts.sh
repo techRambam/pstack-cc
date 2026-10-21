@@ -145,6 +145,10 @@ git -C "$T/verify" checkout -q --detach "$NEW_OID"
 expect "a FAIL verdict records" 0 "verdict FAIL for PR #12 written" "$T/verify" verdict FAIL --pr 12 --by "sonnet verifier" --ran "drove it"
 expect "status reports the FAIL" 2 "verdict      FAIL for PR #12" "$W" status
 expect "a later PASS for the same patch wins" 0 "verdict PASS for PR #12 written" "$T/verify" verdict PASS --pr 12 --by "opus verifier" --ran "drove it again"
+expect "a repeated FAIL, word for word, records again" 0 "verdict FAIL for PR #12 written" "$T/verify" verdict FAIL --pr 12 --by "sonnet verifier" --ran "drove it"
+expect "status reports the repeated FAIL as the newest" 2 "verdict      FAIL for PR #12" "$W" status
+expect "a repeated PASS, word for word, records again" 0 "verdict PASS for PR #12 written" "$T/verify" verdict PASS --pr 12 --by "opus verifier" --ran "drove it again"
+expect "PASS, FAIL, PASS ends at PASS" 2 "verdict      PASS for PR #12 by opus verifier" "$W" status
 git -C "$W" checkout -q main && echo unrelated > "$W/unrelated.txt" && git -C "$W" add unrelated.txt && git -C "$W" commit -qm "main moves"
 git -C "$W" checkout -q feat/x && git -C "$W" rebase -q main
 expect "a rebase that keeps the patch keeps the verdict" 2 "verdict      PASS for PR #12 by opus verifier" "$W" status
