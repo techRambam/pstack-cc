@@ -103,7 +103,7 @@ expect "an act-on path outside the worktree is refused" 2 "is outside the worktr
 quiet begin no-comments
 expect "finish no-comments without a summary is refused" 2 "needs --summary" "$W" finish no-comments
 expect "a deletion count that is not a number is refused" 2 "is not a count" "$W" finish no-comments --summary x --deletions six
-expect "there is no skip verb" 2 "Mark the review's sub-step skipped in the plan" "$W" skip no-comments --reason "docs only change"
+expect "there is no skip verb" 2 "usage: pstack-receipt" "$W" skip no-comments --reason "docs only change"
 expect "an unknown step is refused" 2 'unknown review step "lint"' "$W" begin lint
 expect "an unknown flag is refused" 2 "unknown flag --force" "$W" begin unslop --force x
 expect "a base that names no commit is refused" 2 "--base nowhere names no commit" "$W" begin unslop --base nowhere
@@ -127,6 +127,8 @@ expect "a verdict on the PR's own branch is refused" 2 "the PR's own branch" "$W
 git -C "$W" worktree add -q --detach "$T/verify" "$HEAD_OID~1"
 expect "a verdict off the PR head is refused" 2 "but PR #12's head is" "$T/verify" verdict PASS --pr 12 --by "sonnet verifier" --ran "ran the CLI"
 git -C "$T/verify" checkout -q --detach "$HEAD_OID"
+expect "status --branch reads that branch's receipts from a detached checkout" 0 "chain        ok" "$T/verify" status --branch feat/x
+expect "without --branch a detached checkout has no receipts to read" 2 "HEAD is detached" "$T/verify" status
 expect "a verdict that is not PASS, PASS+NOTES or FAIL is refused" 2 "verdict must be one of" "$T/verify" verdict OK --pr 12 --by v --ran r
 expect "a verdict without --by is refused" 2 "needs --by" "$T/verify" verdict PASS --pr 12 --ran r
 GH_FAIL=1 expect "a gh failure is refused" 2 '`gh pr view 12` failed' "$T/verify" verdict PASS --pr 12 --by v --ran r

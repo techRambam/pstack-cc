@@ -5,7 +5,7 @@ import {
 } from '../lib/receipts.mjs';
 
 const USAGE = 'usage: pstack-receipt begin <step> [--base <ref>] | finish <step> [evidence] '
-  + '| verdict <PASS|PASS+NOTES|FAIL> --pr <n> --by <who> --ran <what> | status [--rev <rev>] [--base <ref>] [--skip <step>]';
+  + '| verdict <PASS|PASS+NOTES|FAIL> --pr <n> --by <who> --ran <what> | status [--rev <rev>] [--branch <name>] [--base <ref>] [--skip <step>]';
 const REPEATABLE = new Set(['seat', 'act-on', 'skip']);
 const refuse = (msg) => { throw new ReceiptRefused(msg); };
 
@@ -95,19 +95,17 @@ function main(argv) {
       return `pstack-receipt: verdict ${r.verdict} for PR #${r.pr} written, patch ${short(r.patchId)}`;
     }
     case 'status': {
-      const { pos, flags } = parse(rest, ['rev', 'base', 'skip']);
+      const { pos, flags } = parse(rest, ['rev', 'branch', 'base', 'skip']);
       if (pos.length) refuse(USAGE);
       for (const s of flags.skip ?? []) {
-        if (s === 'interrogate') refuse('interrogate cannot be skipped.');
-        if (!REVIEW_STEPS.some((r) => r.id === s)) refuse(`--skip ${s} names no review step.`);
+        const step = REVIEW_STEPS.find((r) => r.id === s);
+        if (!step) refuse(`--skip ${s} names no review step.`);
+        if (step.critical) refuse(`${s} cannot be skipped.`);
       }
-      const st = receiptState({ cwd, rev: flags.rev, base: flags.base, skipped: flags.skip ?? [] });
+      const st = receiptState({ cwd, rev: flags.rev, branch: flags.branch, base: flags.base, skipped: flags.skip ?? [] });
       if (!st.chain.ok) process.exitCode = 2;
       return printStatus(st);
     }
-    case 'skip':
-      return refuse('there is no skip receipt. Mark the review\'s sub-step skipped in the plan with the reason. '
-        + 'interrogate cannot be skipped.');
     default:
       return refuse(USAGE);
   }
