@@ -144,18 +144,23 @@ const isReceipt = (r) => r && r.v === 1 && typeof r.at === 'string'
     && Array.isArray(r.fixPaths))
     || (r.kind === 'verdict' && VERDICTS.includes(r.verdict) && typeof r.patchId === 'string'));
 
+/** @returns {Receipt | null} null for a file that is unreadable, not JSON, or not a receipt */
+function parseReceiptFile(file) {
+  try {
+    const r = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return isReceipt(r) ? r : null;
+  } catch {
+    return null;
+  }
+}
+
 /** @returns {Receipt[]} */
 function readLedger(repo, branch) {
   const dir = branchDir(repo, branch);
   let names;
   try { names = fs.readdirSync(dir); } catch { return []; }
-  const out = [];
-  for (const name of names.filter((n) => n.endsWith('.json')).sort()) {
-    try {
-      const r = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
-      if (isReceipt(r)) out.push(r);
-    } catch {}
-  }
+  const out = names.filter((n) => n.endsWith('.json')).sort()
+    .map((name) => parseReceiptFile(path.join(dir, name))).filter((r) => r !== null);
   return out.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 }
 
@@ -318,11 +323,22 @@ function judgeChain(repo, receipts, tree, skipped) {
     if (!paths.length) return { ok: true };
     problem = { kind: 'tail', after: last.step, paths, allowed: last.fixPaths };
   }
-  let from = 0;
+  const hasTail = (id) => tailOf(latestOf.get(id)).length > 0;
+  return { ok: false, problem, rerun: order.slice(rerunFrom(order, linked, hasTail)) };
+}
+
+/**
+ * Index in `order` where a rerun starts. A review before the break whose output still matches the
+ * tree stays valid, so the rerun starts right after the nearest such review, else at the first.
+ * @param {readonly ReviewStepId[]} order
+ * @param {number} linked  how many reviews from the start link cleanly
+ * @param {(id: ReviewStepId) => boolean} hasTail  true when edits follow that review's output
+ */
+function rerunFrom(order, linked, hasTail) {
   for (let p = Math.min(linked, order.length - 1); p > 0; p--) {
-    if (!tailOf(latestOf.get(order[p - 1])).length) { from = p; break; }
+    if (!hasTail(order[p - 1])) return p;
   }
-  return { ok: false, problem, rerun: order.slice(from) };
+  return 0;
 }
 
 /** @returns {VerdictState} */
