@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { REVIEW_STEPS } from './receipts.mjs';
 
-export const CONTRACT = 1;
+/** Bumped when an export of playbooks.mjs or receipts.mjs changes shape. The playbook gate in ~/.claude refuses to run on a mismatch. */
+export const EXPORTS_VERSION = 1;
 
 /**
  * @typedef {'critical' | 'commit' | 'merge'} Tag
@@ -59,11 +60,14 @@ export function normalizeStepText(text) {
 
 const wordCount = (s) => (s ? s.split(' ').length : 0);
 
+const SENTENCE_TERMINATOR = /[.!?]/;
+const CLOSERS_AFTER_TERMINATOR = /(?:\*\*|__|`|\)|"|'|”|’)*/;
+const NEXT_SENTENCE_OPENER = /(?=\s+[A-Z0-9"'(\[`*_“‘])/;
+const SENTENCE_BOUNDARY_RE = new RegExp(
+  SENTENCE_TERMINATOR.source + CLOSERS_AFTER_TERMINATOR.source + NEXT_SENTENCE_OPENER.source, 'g');
+
 function rawPrefixes(raw) {
-  const out = [];
-  const re = /[.!?](?:\*\*|__|`|\)|"|'|”|’)*(?=\s+[A-Z0-9"'(\[`*_“‘])/g;
-  let m;
-  while ((m = re.exec(raw))) out.push(raw.slice(0, m.index + m[0].length));
+  const out = [...raw.matchAll(SENTENCE_BOUNDARY_RE)].map((m) => raw.slice(0, m.index + m[0].length));
   out.push(raw);
   return out;
 }
@@ -139,11 +143,17 @@ export function loadPlaybooks(pluginRoot) {
     .map((f) => parsePlaybook(path.join(dir, f))).filter(Boolean);
 }
 
+/** @returns {{ text: string, reason: string } | null} the row text without its `skip: <reason>` tail, or null when it has none */
+function splitSkipSuffix(text) {
+  const m = SKIP_SUFFIX_RE.exec(text);
+  return m ? { text: text.slice(0, m.index), reason: m[1] } : null;
+}
+
 function readRow(step) {
-  const m = SKIP_SUFFIX_RE.exec(step.text);
-  if (!m) return step;
+  const skip = splitSkipSuffix(step.text);
+  if (!skip) return step;
   const status = step.status === 'done' ? 'skipped' : step.status;
-  return { ...step, text: step.text.slice(0, m.index), status, reason: step.reason || m[1] };
+  return { ...step, text: skip.text, status, reason: step.reason || skip.reason };
 }
 
 const namesStep = (text, step) => step.prefixes.includes(normalizeStepText(text));
