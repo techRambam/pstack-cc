@@ -54,6 +54,9 @@ expect "worked example: the chain covers the pushed code" 0 "chain        ok" "$
 expect "worked example: the push head passes too" 0 "chain        ok" "$W" status --rev HEAD
 EXAMPLE="$W"
 
+fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7; s8; s9; quiet begin interrogate; quiet finish interrogate --seat opus=delivered
+expect "an extra interrogate on a newer tree does not break a valid chain" 0 "chain        ok" "$W" status
+
 fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7; s8; s9 src/z.ts
 expect "variant a: an edit outside the Act on files is a tail" 2 "edits after interrogate touch src/z.ts, but its Act on findings cite src/x.ts" "$W" status
 expect "variant a: a tail reruns every review" 2 "Rerun in order: unslop, no-comments, interrogate." "$W" status

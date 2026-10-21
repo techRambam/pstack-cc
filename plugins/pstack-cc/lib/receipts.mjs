@@ -337,6 +337,15 @@ function judgeChain(repo, receipts, tree, skipped) {
   const latestOf = new Map(order.map((id) => [id, latest(reviews.filter((r) => r.step === id))]));
   const tailOf = (r) => changedPaths(repo, r.output, tree).filter((p) => !r.fixPaths.includes(p));
 
+  // Any one receipt per step may form the chain, so a later review cannot break a valid one.
+  // The problem report below still reads the latest-receipt chain.
+  const newestFirst = order.map((id) => reviews.filter((r) => r.step === id).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)));
+  const search = (i, prev) => {
+    if (i === order.length) return !tailOf(prev).length;
+    return newestFirst[i].some((r) => (!prev || (r.at >= prev.at && r.input === prev.output)) && search(i + 1, r));
+  };
+  if (search(0, null)) return { ok: true };
+
   /** @type {ChainProblem | null} */
   let problem = null;
   let linked = 0;
@@ -353,9 +362,7 @@ function judgeChain(repo, receipts, tree, skipped) {
   }
   if (!problem) {
     const last = latestOf.get(order[order.length - 1]);
-    const paths = tailOf(last);
-    if (!paths.length) return { ok: true };
-    problem = { kind: 'tail', after: last.step, paths, allowed: last.fixPaths };
+    problem = { kind: 'tail', after: last.step, paths: tailOf(last), allowed: last.fixPaths };
   }
   const hasTail = (id) => tailOf(latestOf.get(id)).length > 0;
   return { ok: false, problem, rerun: order.slice(rerunFrom(order, linked, hasTail)) };
