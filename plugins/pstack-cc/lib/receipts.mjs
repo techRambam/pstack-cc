@@ -14,7 +14,7 @@ export const EXPORTS_VERSION = 1;
  * @property {ReviewStepId} id
  * @property {string} skill        how the skill is named in opening-a-pr.md and in messages
  * @property {string} planText     the plan sub-step text `pstack-playbook plan` prints
- * @property {boolean} critical    counts only as done, never as skipped
+ * @property {boolean} critical    the receipt chain needs it even when the plan skips it
  * @property {string} finish       the finish command, with placeholders for its evidence
  * @property {string} finishWhen   when in the review the finish command runs
  */
