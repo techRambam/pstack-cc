@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+// Prints poteto-mode playbooks as plans, and checks the gate tags they carry.
+//
+//   pstack-playbook plan <name> [--todowrite]   plan JSON for the plan tool, or TodoWrite input
+//   pstack-playbook check [--table]             invariants; --table prints every step's derived class
+//
+// Exit 0 on success. Exit 2 with the fix on a refusal or a broken invariant.
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadPlaybooks, matchPlan, planFor, planStepsFromTodos } from '../lib/playbooks.mjs';
+import { REVIEW_STEPS } from '../lib/receipts.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+class Refused extends Error {}
+const fail = (msg) => { throw new Refused(msg); };
+
+function problemsOf(playbooks) {
+  const out = [];
+  for (const pb of playbooks) {
+    for (const tag of ['commit', 'merge']) {
+      const n = pb.steps.filter((s) => s.tags.has(tag)).length;
+      if (n > 1) out.push(`${pb.slug}: ${n} steps tagged [${tag}], at most one may be.`);
+    }
+    if (pb.steps.filter((s) => s.opensPr).length > 1) out.push(`${pb.slug}: more than one step runs Opening a PR.`);
+    if (pb.pushAt !== null && pb.commitAt > pb.pushAt) {
+      out.push(`${pb.slug}: the [commit] step ${pb.commitAt + 1} comes after step ${pb.pushAt + 1}, which opens the PR.`);
+    }
+    for (const todowrite of [false, true]) {
+      const plan = planFor(pb, { todowrite });
+      const m = matchPlan(todowrite ? planStepsFromTodos(plan.todos) : plan.steps, playbooks);
+      if (!m.ok || m.playbook !== pb) out.push(`${pb.slug}: its own printed ${todowrite ? 'TodoWrite list' : 'plan'} does not match it.`);
+    }
+  }
+  const file = path.join(ROOT, 'skills', 'poteto-mode', 'playbooks', 'opening-a-pr.md');
+  const prs = fs.readFileSync(file, 'utf8').split('\n').find((l) => l.startsWith('**PRs.**')) ?? '';
+  const at = REVIEW_STEPS.map((r) => prs.indexOf(`\`${r.skill}\``));
+  if (at.some((i) => i < 0) || at.some((i, k) => k && i < at[k - 1])) {
+    out.push(`opening-a-pr.md: the **PRs.** paragraph no longer names ${REVIEW_STEPS.map((r) => r.skill).join(', ')} in that order. `
+      + 'Update REVIEW_STEPS in lib/receipts.mjs to match it.');
+  }
+  return out;
+}
+
+function table(playbooks) {
+  const rows = [['playbook', 'writes', 'step', 'tags', 'boundary', 'substeps', 'head'].join('\t')];
+  for (const pb of playbooks) {
+    pb.steps.forEach((s, i) => {
+      const boundary = [['commit', pb.commitAt], ['push', pb.pushAt], ['merge', pb.mergeAt]]
+        .filter(([, at]) => at === i).map(([k]) => k).join(',');
+      rows.push([pb.slug, pb.writes, s.n, [...s.tags].join(','), boundary, s.substeps.length, s.head].join('\t'));
+    });
+  }
+  return rows.join('\n');
+}
+
+function main([verb, ...rest]) {
+  let playbooks;
+  try { playbooks = loadPlaybooks(ROOT); } catch (e) { fail(e.message); }
+  if (verb === 'plan') {
+    const name = rest.find((a) => !a.startsWith('--'));
+    const extra = rest.filter((a) => a.startsWith('--') && a !== '--todowrite');
+    if (extra.length) fail(`unknown flag ${extra[0]}. usage: pstack-playbook plan <name> [--todowrite]`);
+    const pb = playbooks.find((p) => p.slug === name);
+    if (!pb) fail(`no playbook "${name ?? ''}". Choose one of: ${playbooks.map((p) => p.slug).join(', ')}.`);
+    return JSON.stringify(planFor(pb, { todowrite: rest.includes('--todowrite') }));
+  }
+  if (verb === 'check') {
+    if (rest.includes('--table')) process.stdout.write(`${table(playbooks)}\n`);
+    const problems = problemsOf(playbooks);
+    if (problems.length) fail(`\n  ${problems.join('\n  ')}`);
+    const n = playbooks.reduce((a, p) => a + p.steps.length, 0);
+    return rest.includes('--table') ? null : `pstack-playbook: ${playbooks.length} playbooks, ${n} steps, invariants hold`;
+  }
+  return fail('usage: pstack-playbook plan <name> [--todowrite] | check [--table]');
+}
+
+try {
+  const out = main(process.argv.slice(2));
+  if (out !== null) process.stdout.write(`${out}\n`);
+} catch (e) {
+  if (!(e instanceof Refused)) throw e;
+  process.stderr.write(`pstack-playbook: ${e.message}\n`);
+  process.exitCode = 2;
+}
