@@ -214,7 +214,7 @@ function reviewSkipsOf(pb, plan, at) {
 }
 
 /** Why a skip reason does not count, or null when it does. A reason counts when it is three words
- *  or more and not a stock phrase. The gate holds every skipped plan row to this rule. */
+ *  or more and not a stock phrase. The playbook gate reminds once about a skipped plan row whose reason fails it. */
 export function reasonProblem(reason) {
   const r = (reason ?? '').trim();
   if (!r) return 'a skipped step needs a reason';
