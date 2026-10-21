@@ -9,19 +9,24 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/pstack-playbooks.XXXXXX")" && [ -d "$T" ] || { e
 trap 'rm -rf "$T"' EXIT
 
 eq() {
-  if [ "$2" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
-  else fail=$((fail+1)); printf '  FAIL  %s\n        want %q\n        got  %q\n' "$1" "$3" "$2"; fi
+  local name="$1" got="$2" want="$3"
+  if [ "$got" = "$want" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$name"
+  else fail=$((fail+1)); printf '  FAIL  %s\n        want %q\n        got  %q\n' "$name" "$want" "$got"; fi
 }
 has() {
-  case "$2" in *"$3"*) pass=$((pass+1)); printf '  ok    %s\n' "$1" ;;
-  *) fail=$((fail+1)); printf '  FAIL  %s (no %q in:)\n%s\n' "$1" "$3" "$2" ;; esac
+  local name="$1" haystack="$2" needle="$3"
+  case "$haystack" in *"$needle"*) pass=$((pass+1)); printf '  ok    %s\n' "$name" ;;
+  *) fail=$((fail+1)); printf '  FAIL  %s (no %q in:)\n%s\n' "$name" "$needle" "$haystack" ;; esac
 }
 js() { node --input-type=module -e "import * as m from '$PLUGIN/lib/playbooks.mjs'; const pbs = m.loadPlaybooks('$PLUGIN'); $1"; }
 
 node "$PB" check >/dev/null 2>&1; eq "every playbook holds the invariants" "$?" "0"
 node "$PB" check --table > "$T/table.tsv"
 if diff -u "$ROOT/tests/playbooks.golden.tsv" "$T/table.tsv"; then eq "derived classes match the golden table" ok ok
-else eq "derived classes match the golden table" diff ok; fi
+else
+  eq "derived classes match the golden table" diff ok
+  echo "  if the change is intended, regenerate: node plugins/pstack-cc/bin/pstack-playbook check --table > tests/playbooks.golden.tsv"
+fi
 
 eq "tags per playbook match the 2026-10-21 table" "$(js '
   const t = pbs.map(p => [p.slug, ...["critical","commit","merge"].map(k => p.steps.filter(s => s.tags.has(k)).map(s => s.n).join(","))].join(":"));
@@ -76,14 +81,15 @@ has "reasonProblem refuses a stock phrase" "$(js "console.log(m.reasonProblem('n
 has "reasonProblem refuses a thin reason" "$(js "console.log(m.reasonProblem('not useful'))")" "under three words"
 
 mutant() {
+  local name="$1" playbook="$2" sed_expr="$3" want_msg="$4"
   local R="$T/mutant-$pass-$fail"
   mkdir -p "$R/skills/poteto-mode"
   cp -R "$PLUGIN/bin" "$PLUGIN/lib" "$R/"
   cp -R "$PLUGIN/skills/poteto-mode/playbooks" "$R/skills/poteto-mode/"
-  sed -i.bak -e "$3" "$R/skills/poteto-mode/playbooks/$2" && rm "$R/skills/poteto-mode/playbooks/$2.bak"
+  sed -i.bak -e "$sed_expr" "$R/skills/poteto-mode/playbooks/$playbook" && rm "$R/skills/poteto-mode/playbooks/$playbook.bak"
   local out rc; out="$(node "$R/bin/pstack-playbook" check 2>&1)"; rc=$?
-  if [ "$rc" = 2 ] && [[ "$out" == *"$4"* ]]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
-  else fail=$((fail+1)); printf '  FAIL  %s (rc %s)\n%s\n' "$1" "$rc" "$out"; fi
+  if [ "$rc" = 2 ] && [[ "$out" == *"$want_msg"* ]]; then pass=$((pass+1)); printf '  ok    %s\n' "$name"
+  else fail=$((fail+1)); printf '  FAIL  %s (rc %s)\n%s\n' "$name" "$rc" "$out"; fi
 }
 mutant "a second [commit] tag fails the check" feature.md 's/^2\. /2. [commit] /' "2 steps tagged [commit]"
 mutant "a second [merge] tag fails the check" shipping.md 's/^5\. /5. [merge] /' "2 steps tagged [merge]"

@@ -29,7 +29,7 @@ expect() {
 quiet() { local out; out="$(cd "$W" && node "$RC" "$@" 2>&1)" || { echo "setup step failed: pstack-receipt $*"; echo "$out"; exit 2; }; }
 
 n=0
-repo() {
+fixture_repo_with_uncommitted_work() {
   n=$((n+1)); W="$T/repo-$n"; mkdir -p "$W/src" "$W/tests"
   git -C "$W" init -q -b main
   for f in README.md src/x.ts src/y.ts src/z.ts tests/t.ts; do printf 'line one of %s\nline two\n' "$f" > "$W/$f"; done
@@ -49,48 +49,49 @@ s7() { commit "drop comments"; }
 s8() { quiet begin interrogate; quiet finish interrogate --seat opus=delivered --seat sonnet=delivered --seat gpt-5.6-sol=dropout:timeout --act-on src/x.ts; }
 s9() { edit src/x.ts "$@"; commit "fix the finding"; }
 
-repo; s2; s3; s4; s5; s6; s7; s8; s9
+fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7; s8; s9
 expect "worked example: the chain covers the pushed code" 0 "chain        ok" "$W" status
 expect "worked example: the push head passes too" 0 "chain        ok" "$W" status --rev HEAD
 EXAMPLE="$W"
 
-repo; s2; s3; s4; s5; s6; s7; s8; s9 src/z.ts
+fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7; s8; s9 src/z.ts
 expect "variant a: an edit outside the Act on files is a tail" 2 "edits after interrogate touch src/z.ts, but its Act on findings cite src/x.ts" "$W" status
 expect "variant a: a tail reruns every review" 2 "Rerun in order: unslop, no-comments, interrogate." "$W" status
 
-repo; s2; s3; s4; edit tests/t.ts; commit "fix a test"; s5; s6; s7; s8; s9
+fixture_repo_with_uncommitted_work; s2; s3; s4; edit tests/t.ts; commit "fix a test"; s5; s6; s7; s8; s9
 expect "variant b: an edit between two reviews is a gap" 2 "edits between unslop and no-comments touch tests/t.ts, which unslop never saw" "$W" status
 
-repo; s2; s3; s4; s5; s6; s7; s8; s9; s5; edit src/y.ts; quiet finish no-comments --summary "1 kill" --deletions 1; commit "rerun"
+fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7; s8; s9; s5; edit src/y.ts; quiet finish no-comments --summary "1 kill" --deletions 1; commit "rerun"
 expect "variant c: rerunning a middle review opens a gap before it" 2 "edits between unslop and no-comments touch src/x.ts" "$W" status
 expect "variant c: and asks for every review again" 2 "Rerun in order: unslop, no-comments, interrogate." "$W" status
 
-repo; s2; s3; s4; s5; s6; s7; s8; s9
+fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7; s8; s9
 git -C "$W" checkout -q main && echo new > "$W/other.txt" && git -C "$W" add other.txt && git -C "$W" commit -qm "main moves"
 git -C "$W" checkout -q feat/x && git -C "$W" rebase -q main
 expect "variant d: a rebase onto a newer base is a tail" 2 "edits after interrogate touch other.txt" "$W" status
 
-repo; echo "notes" > "$W/scratch.txt"; s2; s3; s4; s5; s6; s7; s8; s9
+fixture_repo_with_uncommitted_work; echo "notes" > "$W/scratch.txt"; s2; s3; s4; s5; s6; s7; s8; s9
 expect "variant e: the work tree still holds the untracked file" 0 "chain        ok" "$W" status
 expect "variant e: the pushed head does not, so it is a tail" 2 "edits after interrogate touch scratch.txt" "$W" status --rev HEAD
 
-repo; s2; s3; s4; s5; s6; s7
+fixture_repo_with_uncommitted_work; s2; s3; s4; s5; s6; s7
 expect "a missing interrogate reruns only interrogate when nothing moved" 2 "there is no interrogate receipt for this branch. Rerun in order: interrogate." "$W" status
 eq_js() {
-  local got; got="$(cd "$W" && node --input-type=module -e "import { receiptState } from '$PLUGIN/lib/receipts.mjs'; $2")"
-  if [ "$got" = "$3" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$1"
-  else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$1" "$3" "$got"; fi
+  local name="$1" script="$2" want="$3"
+  local got; got="$(cd "$W" && node --input-type=module -e "import { receiptState } from '$PLUGIN/lib/receipts.mjs'; $script")"
+  if [ "$got" = "$want" ]; then pass=$((pass+1)); printf '  ok    %s\n' "$name"
+  else fail=$((fail+1)); printf '  FAIL  %s (want %q, got %q)\n' "$name" "$want" "$got"; fi
 }
 eq_js "interrogate in the skipped set still counts as missing" \
   "const s = receiptState({ cwd: process.cwd(), skipped: ['unslop', 'interrogate'] }); console.log(s.chain.problem.kind, s.chain.problem.step)" \
   "missing interrogate"
 expect "status refuses to skip interrogate" 2 "interrogate cannot be skipped" "$W" status --skip interrogate
 
-repo; s5; s6; s7; s8
+fixture_repo_with_uncommitted_work; s5; s6; s7; s8
 expect "a plan-skipped unslop drops out of the chain" 0 "chain        ok" "$W" status --skip unslop
 expect "without the skip, unslop is missing" 2 "there is no unslop receipt" "$W" status
 
-repo
+fixture_repo_with_uncommitted_work
 expect "finish without begin is refused" 2 "no begin for unslop in this worktree on feat/x" "$W" finish unslop
 quiet begin interrogate; edit src/y.ts
 expect "finish interrogate after the tree moved is refused" 2 "the tree changed during the interrogate run (src/y.ts)" "$W" finish interrogate --seat opus=delivered
@@ -112,7 +113,7 @@ git -C "$W" checkout -q --detach
 expect "a detached HEAD is refused" 2 "HEAD is detached" "$W" begin unslop
 git -C "$W" checkout -q feat/x
 
-repo; quiet begin unslop; quiet begin unslop
+fixture_repo_with_uncommitted_work; quiet begin unslop; quiet begin unslop
 eq_js "begin twice leaves one open record" "import fs from 'node:fs'; console.log(fs.readdirSync('.git/pstack-receipts/feat%2Fx/open').length)" "1"
 quiet finish unslop; quiet begin unslop; quiet finish unslop
 eq_js "the same receipt written twice is one file" "import fs from 'node:fs'; console.log(fs.readdirSync('.git/pstack-receipts/feat%2Fx').filter(f => f.startsWith('unslop.')).length)" "1"
