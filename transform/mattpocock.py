@@ -48,6 +48,27 @@ EDITS = [
      "Follow every claim back to the source that owns it. Never call any service with "
      "credentials you invented or were not given. Never call a live production or payment "
      "endpoint unless the brief names that exact endpoint.", 1),
+    # A reflect run (2026-10-22) found the skill matched "research best practices ... and save
+    # it" and never fired, and its agents read WebFetch results, another model's summary of
+    # the page. The description leads with the phrases people use. The body makes the agent
+    # read saved full text and check every quote against it with a script.
+    ("skills/research/SKILL.md",
+     "description: Investigate a question against high-trust primary sources and capture the "
+     "findings as a Markdown file in the repo. Use when the user wants a topic researched, "
+     "docs or API facts gathered, or reading legwork delegated to a background agent.",
+     'description: Use for "best practices", "baseline", "state of the art", "exhaustive" or '
+     '"many sources" research, "research X and save it", and docs or API facts. Reads primary '
+     "sources as saved full text, checks every quote with a script, and saves a cited "
+     "Markdown note.", 1),
+    ("skills/research/SKILL.md", "not a secondary write-up of them.",
+     "not a secondary write-up of them. Download each source and read the saved full text, "
+     "never a WebFetch result, which is another model's summary of the page. List a source "
+     "you cannot save as unread, and cite no claim to it.", 1),
+    ("skills/research/SKILL.md", "citing each claim's source.",
+     "citing each claim's source. Check every quoted claim: write and run a script that finds "
+     "each quote, with whitespace collapsed, in the saved file of the source it cites. Fix or "
+     "drop a quote it cannot find, and report how many quotes it checked and how many failed.",
+     1),
 ]
 
 # Codex's counterpart of disable-model-invocation. Routed skills drop the Claude flag
