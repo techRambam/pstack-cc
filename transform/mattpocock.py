@@ -42,11 +42,12 @@ EDITS = [
     ("skills/to-tickets/SKILL.md", "## Acceptance criteria\n\n- [ ] Criterion 1",
      "## Seams under test\n\nThe seams from the parent spec's Testing Decisions that this "
      "ticket's tests sit at, or \"None named\".\n\n## Acceptance criteria\n\n- [ ] Criterion 1", 1),
-    # "First-party APIs" read as sources to call. A docs-only research delegate sent 14 requests
-    # with invented credentials to a live payment provider (2026-10-22, a CRM button session).
+    # "First-party APIs" read as sources to call. A docs-only research delegate called a live
+    # service with credentials it had invented.
     ("skills/research/SKILL.md", "Follow every claim back to the source that owns it.",
-     "Follow every claim back to the source that owns it. Read sources only. Send a request to "
-     "a live production or payment endpoint only when the brief names that endpoint.", 1),
+     "Follow every claim back to the source that owns it. Never call a live service with "
+     "credentials you invented or were not given. Call an endpoint only when the brief names "
+     "it.", 1),
 ]
 
 # Codex's counterpart of disable-model-invocation. Routed skills drop the Claude flag

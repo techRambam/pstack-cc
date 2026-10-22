@@ -18,7 +18,7 @@ Every candidate gets the same prompt, so the prompt is the contract.
 
 ## Phase B: Fan out
 
-Spawn all N subagents in one message with `run_in_background: true`, each with the task, the path to the shared grounding, its own output path, and instructions to produce the artifact and a short rationale naming the alternatives it considered and what it rejected.
+Spawn all N subagents in one message with `run_in_background: true`, each with the task, the path to the shared grounding, its own output path, and instructions to produce the artifact and a short rationale naming the alternatives it considered and what it rejected. For visual candidates, ask each to save one PNG per state under a fixed name, the same in every candidate.
 
 If a candidate produces no output, proceed with N-1 and note the dropout.
 
@@ -26,11 +26,11 @@ If a candidate produces no output, proceed with N-1 and note the dropout.
 
 After all Phase B candidates complete, choose one model from the `arena cross-judge pool` line in `~/.claude/pstack-models.md`. If the rule or that line is missing, choose from `opus` and `sonnet`. Prefer a different model family from the parent's. Spawn one judge subagent on that model with `subagent_type: "pstack-cc:read-only"`. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with your reading in Phase D. Don't spawn it while candidates are still writing.
 
-For visual candidates, the judge compares from one grid image per state across all candidates, plus DOM or script checks, not from each candidate's screenshot folder. Full-size PNGs per candidate fill its context.
+For visual candidates, the judge is read-only, so you compose the grid before spawning it. The grid has one image per state, with all candidates side by side. Pass the judge the grid path, the DOM or script check output, and the full-size paths only for zooming in. Full-size PNGs per candidate fill its context.
 
 ## Phase D: Pick a base
 
-Read every candidate end to end before picking. Score each against the rubric criterion by criterion, not on holistic feel, and compare with the cross-judge. Agreement on the base confirms the pick. Disagreement means one of you is biased or the rubric was ambiguous. Read both rationales before deciding.
+Read every candidate end to end before picking. For visual candidates, read the grid for each state and open a full-size PNG only to zoom in. Score each against the rubric criterion by criterion, not on holistic feel, and compare with the cross-judge. Agreement on the base confirms the pick. Disagreement means one of you is biased or the rubric was ambiguous. Read both rationales before deciding.
 
 Pick the base a future maintainer can extend most easily without breaking invariants. When two feel tied, prefer the cleaner boundary or smaller API, per the Laziness Protocol.
 
@@ -105,14 +105,21 @@ sits just under that so a slow seat reports "timed out" instead of vanishing. Pa
 longer seats.
 
 **Check the seats before dispatch.** Run `panelist doctor` before dispatch and
-before you replace a configured seat. Fill a seat that doctor marks FAIL from a
-vendor it shows reachable, and name the swap in the verdict table. A one-model
-panel has no diversity, so never run one.
+before you replace a configured seat. Doctor samples each vendor's models, so run
+`panelist doctor --all` when a seat's model is not listed. A seat is down when
+doctor's lines for its model or vendor show FAIL, NO KEY, UNFUNDED or MISSING.
+Replace it with a model no other seat uses, from a vendor doctor shows reachable,
+and name the swap in the verdict table. A swap made and named before dispatch is
+the one allowed substitution. A one-model panel has no diversity, so never run one.
 
 **A seat counts only if it delivered.** That means exit status 0, a non-empty
 answer, and (under `--schema`) JSON that parses against the schema. Anything else
 is a **dropout**: name the seat, its model and the error in the verdict table, and
-carry on with the seats you have. Past the pre-dispatch swap above, never substitute
-another model for a dropout silently, and never let one model fill two seats to
-keep the count up, because the panel exists for model diversity. A panel of three
-that names its missing fourth is honest; reporting three as if four voted is not.
+carry on with the seats you have. Never substitute another model for a dropout
+silently, and never let one model fill two seats to keep the count up, because
+the panel exists for model diversity. A panel of three that names its missing
+fourth is honest; reporting three as if four voted is not.
+
+If dropouts leave a single delivered seat, rerun doctor and add a seat from a
+reachable vendor not yet seated. If none is reachable, say in the verdict that the
+panel had one model.
