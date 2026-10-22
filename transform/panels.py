@@ -72,13 +72,18 @@ minutes. A foreground call is killed at 600s, and `panelist`'s own default timeo
 sits just under that so a slow seat reports "timed out" instead of vanishing. Pass `-t` for
 longer seats.
 
+**Check the seats before dispatch.** Run `panelist doctor` before dispatch and
+before you replace a configured seat. Fill a seat that doctor marks FAIL from a
+vendor it shows reachable, and name the swap in the verdict table. A one-model
+panel has no diversity, so never run one.
+
 **A seat counts only if it delivered.** That means exit status 0, a non-empty
 answer, and (under `--schema`) JSON that parses against the schema. Anything else
 is a **dropout**: name the seat, its model and the error in the verdict table, and
-carry on with the seats you have. Never substitute another model for a dropout
-silently, and never let one model fill two seats to keep the count up, because
-the panel exists for model diversity. A panel of three that names its missing
-fourth is honest; reporting three as if four voted is not.
+carry on with the seats you have. Past the pre-dispatch swap above, never substitute
+another model for a dropout silently, and never let one model fill two seats to
+keep the count up, because the panel exists for model diversity. A panel of three
+that names its missing fourth is honest; reporting three as if four voted is not.
 """
 
 targets = ["arena", "interrogate", "swarm", "architect"]

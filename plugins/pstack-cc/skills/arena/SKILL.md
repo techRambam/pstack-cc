@@ -26,6 +26,8 @@ If a candidate produces no output, proceed with N-1 and note the dropout.
 
 After all Phase B candidates complete, choose one model from the `arena cross-judge pool` line in `~/.claude/pstack-models.md`. If the rule or that line is missing, choose from `opus` and `sonnet`. Prefer a different model family from the parent's. Spawn one judge subagent on that model with `subagent_type: "pstack-cc:read-only"`. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with your reading in Phase D. Don't spawn it while candidates are still writing.
 
+For visual candidates, the judge compares from one grid image per state across all candidates, plus DOM or script checks, not from each candidate's screenshot folder. Full-size PNGs per candidate fill its context.
+
 ## Phase D: Pick a base
 
 Read every candidate end to end before picking. Score each against the rubric criterion by criterion, not on holistic feel, and compare with the cross-judge. Agreement on the base confirms the pick. Disagreement means one of you is biased or the rubric was ambiguous. Read both rationales before deciding.
@@ -102,10 +104,15 @@ minutes. A foreground call is killed at 600s, and `panelist`'s own default timeo
 sits just under that so a slow seat reports "timed out" instead of vanishing. Pass `-t` for
 longer seats.
 
+**Check the seats before dispatch.** Run `panelist doctor` before dispatch and
+before you replace a configured seat. Fill a seat that doctor marks FAIL from a
+vendor it shows reachable, and name the swap in the verdict table. A one-model
+panel has no diversity, so never run one.
+
 **A seat counts only if it delivered.** That means exit status 0, a non-empty
 answer, and (under `--schema`) JSON that parses against the schema. Anything else
 is a **dropout**: name the seat, its model and the error in the verdict table, and
-carry on with the seats you have. Never substitute another model for a dropout
-silently, and never let one model fill two seats to keep the count up, because
-the panel exists for model diversity. A panel of three that names its missing
-fourth is honest; reporting three as if four voted is not.
+carry on with the seats you have. Past the pre-dispatch swap above, never substitute
+another model for a dropout silently, and never let one model fill two seats to
+keep the count up, because the panel exists for model diversity. A panel of three
+that names its missing fourth is honest; reporting three as if four voted is not.
