@@ -133,13 +133,11 @@ minutes. A foreground call is killed at 600s, and `panelist`'s own default timeo
 sits just under that so a slow seat reports "timed out" instead of vanishing. Pass `-t` for
 longer seats.
 
-**Check the seats before dispatch.** Run `panelist doctor` before dispatch and
-before you replace a configured seat. Doctor samples each vendor's models, so run
-`panelist doctor --all` when a seat's model is not listed. A seat is down when
-doctor's lines for its model or vendor show FAIL, NO KEY, UNFUNDED or MISSING.
-Replace it with a model no other seat uses, from a vendor doctor shows reachable,
-and name the swap in the verdict table. A swap made and named before dispatch is
-the one allowed substitution. A one-model panel has no diversity, so never run one.
+**Check the seats before dispatch.** Run `panelist doctor` in the background
+while you write the seat prompts (`--all` when a seat's model is not listed). A
+seat is down when its own model's line shows FAIL or UNFUNDED, or its vendor
+shows NO KEY or MISSING with no other route to that model. Replace a down seat
+with a model no other seat uses, and name the swap in the verdict table.
 
 **A seat counts only if it delivered.** That means exit status 0, a non-empty
 answer, and (under `--schema`) JSON that parses against the schema. Anything else
@@ -149,6 +147,5 @@ silently, and never let one model fill two seats to keep the count up, because
 the panel exists for model diversity. A panel of three that names its missing
 fourth is honest; reporting three as if four voted is not.
 
-If dropouts leave a single delivered seat, rerun doctor and add a seat from a
-reachable vendor not yet seated. If none is reachable, say in the verdict that the
-panel had one model.
+A review or judging panel that ends with one delivered model gives no second
+opinion. Say so in the verdict as a one-model panel, never as a full review.
