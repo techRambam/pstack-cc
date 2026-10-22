@@ -37,10 +37,10 @@ case "$budget" in
 esac
 
 cat <<NOTE
-pstack-cc usage budget: ${budget}. Subagents are where plan usage goes, so these caps override any playbook step that asks for more:
+pstack-cc usage budget: ${budget}. Subagents are where plan usage goes, so these caps limit how many subagents and seats a step uses. They never remove a step: run every playbook step, within the caps.
 - Fan-out: at most ${width} subagents per step and at most ${width} in flight at once. Need more? Say why in one line first, or run the extra work in a later wave.
 - Panels (interrogate, arena, architect): ${seats}. A missing non-Claude seat is a named dropout; do not backfill it with another Claude seat.
-- Spawn a subagent only when the work would flood this context (many files, long logs) or needs isolation. A lookup of a few files is cheaper as Read/Grep here.
+- Outside a playbook step, spawn a subagent only when the work would flood this context (many files, long logs) or needs isolation. A lookup of a few files is cheaper as Read/Grep here. A step that names a skill (how, architect, interrogate) still runs that skill.
 - Always set \`model\` on a spawn from the role's line in ~/.claude/pstack-models.md; an unset model inherits this session's model. Pure search and listing work runs on haiku.
 - Brief with file paths and exact questions, not pasted context: everything in a brief is paid for again in every turn of that subagent.
 - arena, swarm, orchestrate and the autopilot playbooks run only when the user names them, not as a step chosen on their behalf.
