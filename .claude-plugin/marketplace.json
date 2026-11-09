@@ -6,8 +6,8 @@
   "description": "pstack and Matt Pocock's skills, copied from upstream.",
   "plugins": [
     {
-      "name": "pstack-cc",
-      "source": "./plugins/pstack-cc"
+      "name": "pstack",
+      "source": "./plugins/pstack"
     },
     {
       "name": "mattpocock-skills",

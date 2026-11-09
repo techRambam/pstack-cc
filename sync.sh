@@ -30,11 +30,7 @@ src="$tmp/pstack/harness/pstack/claude-code"
 [ -d "$src" ] || die "cursor/plugins at $pstack_ref has no harness/pstack/claude-code"
 out="$tmp/plugins"
 mkdir "$out"
-cp -R "$src" "$out/pstack-cc"
-manifest="$out/pstack-cc/.claude-plugin/plugin.json"
-sed -i.orig 's/^  "name": "pstack",$/  "name": "pstack-cc",/' "$manifest"
-rm "$manifest.orig"
-grep -q '^  "name": "pstack-cc",$' "$manifest" || die "could not rename the plugin in .claude-plugin/plugin.json"
+cp -R "$src" "$out/pstack"
 
 m="$tmp/matt"
 name=$(jq -er .name "$m/.claude-plugin/plugin.json") || die "mattpocock/skills has no .claude-plugin/plugin.json name"
@@ -62,10 +58,8 @@ This repository is a Claude Code marketplace with two plugins, each copied from 
 
 | Plugin | Upstream | Commit |
 | --- | --- | --- |
-| \`pstack-cc\` | [cursor/plugins \`harness/pstack/claude-code\`](https://github.com/cursor/plugins/tree/$pstack_sha/harness/pstack/claude-code) | \`$pstack_sha\` |
+| \`pstack\` | [cursor/plugins \`harness/pstack/claude-code\`](https://github.com/cursor/plugins/tree/$pstack_sha/harness/pstack/claude-code) | \`$pstack_sha\` |
 | \`$name\` | [mattpocock/skills](https://github.com/mattpocock/skills/tree/$matt_sha) | \`$matt_sha\` |
-
-The one local edit is the name \`pstack-cc\` in \`plugins/pstack-cc/.claude-plugin/plugin.json\`.
 
 \`./sync.sh main main\` copies the latest upstream \`main\` of both. \`./sync.sh\` with no arguments copies the commits in \`upstream.lock\` again.
 EOF
