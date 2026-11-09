@@ -3,22 +3,15 @@
   "owner": {
     "name": "techRambam"
   },
-  "description": "pstack, adapted for Claude Code. Generated from upstream by import.sh, not hand-forked.",
+  "description": "pstack and Matt Pocock's skills, copied from upstream.",
   "plugins": [
     {
       "name": "pstack-cc",
-      "source": "./plugins/pstack-cc",
-      "description": "pstack's skills, playbooks and principles ported to Claude Code, with Matt Pocock's grilling, spec and ticket skills in the same flow.",
-      "category": "engineering",
-      "keywords": [
-        "pstack",
-        "poteto-mode",
-        "workflow",
-        "principles",
-        "verification",
-        "mattpocock",
-        "grilling"
-      ]
+      "source": "./plugins/pstack-cc"
+    },
+    {
+      "name": "mattpocock-skills",
+      "source": "./plugins/mattpocock-skills"
     }
   ]
 }
